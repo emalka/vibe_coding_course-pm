@@ -16,7 +16,7 @@
 
 - [x] Enrich PLAN.md with detailed substeps, checklists, tests, and success criteria
 - [x] Create frontend/AGENTS.md describing existing code and coding conventions
-- [ ] User approves the plan
+- [x] User approves the plan
 
 **Success criteria:** User confirms the plan is good to proceed.
 
@@ -26,30 +26,30 @@
 
 Set up Docker, FastAPI backend, and start/stop scripts. Serve a hello world page and a test API endpoint.
 
-- [ ] Create backend/requirements.txt (or pyproject.toml for uv) with FastAPI, uvicorn
-- [ ] Create backend/app/main.py with FastAPI app
+- [x] Create backend/requirements.txt (or pyproject.toml for uv) with FastAPI, uvicorn
+- [x] Create backend/app/main.py with FastAPI app
   - GET / returns a simple HTML hello world page
   - GET /api/health returns { "status": "ok" }
-- [ ] Create Dockerfile in project root
+- [x] Create Dockerfile in project root
   - Based on latest python slim image
   - Install uv, then use uv to install Python dependencies
   - Copy backend code
   - Expose port 8000
   - CMD: uvicorn
-- [ ] Create .dockerignore
-- [ ] Create scripts/start.sh (Mac)
+- [x] Create .dockerignore
+- [x] Create scripts/start.sh (Mac)
   - Builds Docker image
   - Runs container, passing .env, mounting volume for SQLite
-- [ ] Create scripts/stop.sh (Mac)
+- [x] Create scripts/stop.sh (Mac)
   - Stops and removes the container
-- [ ] Update backend/AGENTS.md with backend description
+- [x] Update backend/AGENTS.md with backend description
 
 ### Tests & Success Criteria
 
-- [ ] `scripts/start.sh` builds and starts the container without errors
-- [ ] `curl http://localhost:8000/` returns hello world HTML
-- [ ] `curl http://localhost:8000/api/health` returns `{"status": "ok"}`
-- [ ] `scripts/stop.sh` stops the container cleanly
+- [x] `scripts/start.sh` builds and starts the container without errors
+- [x] `curl http://localhost:8000/` returns hello world HTML
+- [x] `curl http://localhost:8000/api/health` returns `{"status": "ok"}`
+- [x] `scripts/stop.sh` stops the container cleanly
 
 ---
 

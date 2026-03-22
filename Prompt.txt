@@ -1,0 +1,11 @@
+1. Also prescribe coding conventions for future frontend work
+2. Yes
+3. For the first MVP in-memory is Ok
+4. Pick the latest slim Python image
+5. Use the general recommended SQLite file location
+6. Yes
+7. For now just generate the mac scripts if I will need others I will ask
+
+Please start with Part 1
+
+------------------------

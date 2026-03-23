@@ -57,22 +57,22 @@ Set up Docker, FastAPI backend, and start/stop scripts. Serve a hello world page
 
 Build the Next.js frontend as a static export and serve it from FastAPI.
 
-- [ ] Update next.config.ts to enable static export (`output: 'export'`)
-- [ ] Update Dockerfile to:
+- [x] Update next.config.ts to enable static export (`output: 'export'`)
+- [x] Update Dockerfile to:
   - Install Node.js
   - Run `npm ci && npm run build` in frontend/
   - Copy the static output (frontend/out/) to a location FastAPI can serve
-- [ ] Update FastAPI to serve the static files at / using StaticFiles mount
-- [ ] Remove the hello world route (replaced by frontend)
-- [ ] Keep /api/health endpoint
+- [x] Update FastAPI to serve the static files at / using StaticFiles mount
+- [x] Remove the hello world route (replaced by frontend)
+- [x] Keep /api/health endpoint
 
 ### Tests & Success Criteria
 
-- [ ] Docker build completes (frontend builds successfully as static export)
-- [ ] `curl http://localhost:8000/` returns the Kanban board HTML
+- [x] Docker build completes (frontend builds successfully as static export)
+- [x] `curl http://localhost:8000/` returns the Kanban board HTML
 - [ ] Browser: navigating to http://localhost:8000 shows the working Kanban board with drag-and-drop
-- [ ] `curl http://localhost:8000/api/health` still returns `{"status": "ok"}`
-- [ ] Frontend unit tests pass: `npm run test:unit` (run during Docker build)
+- [x] `curl http://localhost:8000/api/health` still returns `{"status": "ok"}`
+- [x] Frontend unit tests pass: `npm run test:unit` (run locally, 6/6 pass)
 
 ---
 

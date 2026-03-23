@@ -6,10 +6,16 @@
   --secondary-purple: #753991;
   --navy-dark: #032147;
   --gray-text: #888888;
-  --surface: #f7f8fb;
+  --surface: #f4f5f9;
   --surface-strong: #ffffff;
-  --stroke: rgba(3, 33, 71, 0.08);
-  --shadow: 0 18px 40px rgba(3, 33, 71, 0.12);
+  --stroke: rgba(3, 33, 71, 0.07);
+  --shadow: 0 8px 32px rgba(3, 33, 71, 0.08);
+  --shadow-hover: 0 12px 40px rgba(3, 33, 71, 0.13);
+  --col-backlog: #94a3b8;
+  --col-discovery: #209dd7;
+  --col-progress: #ecad0a;
+  --col-review: #753991;
+  --col-done: #22c55e;
 }
 
 @theme inline {
@@ -27,8 +33,35 @@ body {
   color: var(--navy-dark);
   font-family: var(--font-body), "Segoe UI", sans-serif;
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .font-display {
   font-family: var(--font-display), "Segoe UI", sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(3, 33, 71, 0.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(3, 33, 71, 0.25);
+}
+
+/* Smooth transitions for interactive elements */
+button, input, textarea {
+  transition: all 0.15s ease;
+}
+
+input:focus, textarea:focus {
+  outline: none;
 }

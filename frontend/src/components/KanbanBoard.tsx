@@ -7,14 +7,18 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { ChatSidebar } from "@/components/ChatSidebar";
-import { moveCard, type BoardData } from "@/lib/kanban";
+import type { BoardData } from "@/lib/kanban";
 import {
   fetchBoard,
   renameColumn as apiRenameColumn,
@@ -34,6 +38,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const boardBeforeDrag = useRef<BoardData | null>(null);
 
   useEffect(() => {
     fetchBoard()
@@ -54,35 +59,142 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
 
   const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
 
+  const columnIds = useMemo(
+    () => new Set(board?.columns.map((c) => c.id) ?? []),
+    [board?.columns]
+  );
+
+  const findColumnOfCard = useCallback(
+    (cardId: string): string | undefined => {
+      if (!board) return undefined;
+      if (columnIds.has(cardId)) return cardId;
+      return board.columns.find((c) => c.cardIds.includes(cardId))?.id;
+    },
+    [board, columnIds]
+  );
+
+  // Custom collision detection: use pointerWithin to find which column the
+  // pointer is in, then closestCenter for card-level precision within it.
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const pointerCollisions = pointerWithin(args);
+      const colHit = pointerCollisions.find((c) => columnIds.has(c.id as string));
+
+      if (colHit) {
+        // Find the closest card within the target column
+        const centerCollisions = closestCenter(args);
+        const cardInCol = centerCollisions.find((c) => {
+          const id = c.id as string;
+          if (columnIds.has(id)) return false;
+          const col = board?.columns.find((col) => col.id === colHit.id);
+          return col?.cardIds.includes(id);
+        });
+        return [cardInCol ?? colHit];
+      }
+
+      return [];
+    },
+    [columnIds, board]
+  );
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
+    boardBeforeDrag.current = board;
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || !board) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    const activeCol = findColumnOfCard(activeId);
+    const overCol = findColumnOfCard(overId);
+
+    if (!activeCol || !overCol || activeCol === overCol) return;
+
+    // Card is being dragged over a different column — move it there in state
+    setBoard((prev) => {
+      if (!prev) return prev;
+      const srcCol = prev.columns.find((c) => c.id === activeCol)!;
+      const dstCol = prev.columns.find((c) => c.id === overCol)!;
+
+      const srcCards = srcCol.cardIds.filter((id) => id !== activeId);
+      const dstCards = [...dstCol.cardIds];
+
+      // Insert at the position of the hovered card, or at the end if hovering the column itself
+      const overIndex = columnIds.has(overId)
+        ? dstCards.length
+        : dstCards.indexOf(overId);
+      const insertAt = overIndex === -1 ? dstCards.length : overIndex;
+      dstCards.splice(insertAt, 0, activeId);
+
+      return {
+        ...prev,
+        columns: prev.columns.map((col) => {
+          if (col.id === activeCol) return { ...col, cardIds: srcCards };
+          if (col.id === overCol) return { ...col, cardIds: dstCards };
+          return col;
+        }),
+      };
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || active.id === over.id || !board) return;
-
-    const prev = board;
-    const newColumns = moveCard(prev.columns, active.id as string, over.id as string);
-    setBoard({ ...prev, columns: newColumns });
-
-    // Find where the card ended up
-    const cardId = active.id as string;
-    const targetCol = newColumns.find((c) => c.cardIds.includes(cardId));
-    if (targetCol) {
-      const position = targetCol.cardIds.indexOf(cardId);
-      apiMoveCard(cardId, targetCol.id, position, prev);
+    if (!over || !board) {
+      // Cancelled — revert
+      if (boardBeforeDrag.current) setBoard(boardBeforeDrag.current);
+      boardBeforeDrag.current = null;
+      return;
     }
-  };
 
-  const apiMoveCard = async (cardId: string, columnId: string, position: number, prev: BoardData) => {
-    try {
-      await moveCardApi(cardId, columnId, position);
-    } catch {
-      setBoard(prev);
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeCol = findColumnOfCard(activeId);
+    const overCol = findColumnOfCard(overId);
+
+    if (activeCol && overCol && activeCol === overCol) {
+      // Within same column — reorder
+      const col = board.columns.find((c) => c.id === activeCol)!;
+      const oldIndex = col.cardIds.indexOf(activeId);
+      const newIndex = columnIds.has(overId)
+        ? col.cardIds.length - 1
+        : col.cardIds.indexOf(overId);
+
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const newCardIds = arrayMove(col.cardIds, oldIndex, newIndex);
+        setBoard((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            columns: prev.columns.map((c) =>
+              c.id === activeCol ? { ...c, cardIds: newCardIds } : c
+            ),
+          };
+        });
+      }
     }
+
+    // Persist to backend: find where the card ended up
+    // Use a microtask so the state update above is applied first
+    setTimeout(() => {
+      setBoard((current) => {
+        if (!current) return current;
+        const targetCol = current.columns.find((c) => c.cardIds.includes(activeId));
+        if (targetCol) {
+          const position = targetCol.cardIds.indexOf(activeId);
+          moveCardApi(activeId, targetCol.id, position).catch(() => {
+            if (boardBeforeDrag.current) setBoard(boardBeforeDrag.current);
+          });
+        }
+        boardBeforeDrag.current = null;
+        return current;
+      });
+    }, 0);
   };
 
   const handleRenameColumn = useCallback((columnId: string, title: string) => {
@@ -237,8 +349,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetection}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <section className="grid auto-cols-[minmax(260px,1fr)] grid-flow-col gap-5 overflow-x-auto pb-4 lg:grid-cols-5 lg:grid-flow-row lg:overflow-x-visible">

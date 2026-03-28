@@ -20,15 +20,19 @@ type ApiBoard = {
   columns: ApiColumn[];
 };
 
+function colId(id: number): string { return `col-${id}`; }
+function cardId(id: number): string { return `card-${id}`; }
+function toApiId(prefixedId: string): string { return prefixedId.replace(/^(col-|card-)/, ""); }
+
 function apiBoardToLocal(api: ApiBoard): BoardData {
   const cards: BoardData["cards"] = {};
   const columns = api.columns.map((col) => {
     const cardIds = col.cards.map((c) => {
-      const id = String(c.id);
+      const id = cardId(c.id);
       cards[id] = { id, title: c.title, details: c.details };
       return id;
     });
-    return { id: String(col.id), title: col.title, cardIds };
+    return { id: colId(col.id), title: col.title, cardIds };
   });
   return { columns, cards };
 }
@@ -53,7 +57,7 @@ export async function fetchBoard(): Promise<BoardData> {
 }
 
 export async function renameColumn(columnId: string, title: string): Promise<void> {
-  await request(`/api/columns/${columnId}`, {
+  await request(`/api/columns/${toApiId(columnId)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
@@ -65,34 +69,34 @@ export async function createCard(
   title: string,
   details: string
 ): Promise<{ id: string }> {
-  const data = await request<{ id: number }>("/api/cards", json({ column_id: Number(columnId), title, details }));
-  return { id: String(data.id) };
+  const data = await request<{ id: number }>("/api/cards", json({ column_id: Number(toApiId(columnId)), title, details }));
+  return { id: cardId(data.id) };
 }
 
 export async function updateCard(
-  cardId: string,
+  id: string,
   fields: { title?: string; details?: string }
 ): Promise<void> {
-  await request(`/api/cards/${cardId}`, {
+  await request(`/api/cards/${toApiId(id)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(fields),
   });
 }
 
-export async function deleteCard(cardId: string): Promise<void> {
-  await request(`/api/cards/${cardId}`, { method: "DELETE" });
+export async function deleteCard(id: string): Promise<void> {
+  await request(`/api/cards/${toApiId(id)}`, { method: "DELETE" });
 }
 
 export async function moveCardApi(
-  cardId: string,
+  id: string,
   columnId: string,
   position: number
 ): Promise<void> {
-  await request(`/api/cards/${cardId}/move`, {
+  await request(`/api/cards/${toApiId(id)}/move`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ column_id: Number(columnId), position }),
+    body: JSON.stringify({ column_id: Number(toApiId(columnId)), position }),
   });
 }
 

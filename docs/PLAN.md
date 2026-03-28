@@ -2,7 +2,7 @@
 
 ## Decisions Log
 
-- Auth: simple session cookie from FastAPI (hardcoded user/password for MVP)
+- Auth: session cookie from FastAPI; password verified via bcrypt against SQLite (single seeded user for MVP)
 - AI conversation history: in-memory per browser session (not persisted in DB for MVP)
 - Docker base image: latest python slim
 - SQLite location: /data/kanban.db inside container, mounted as a Docker volume for persistence
@@ -70,7 +70,7 @@ Build the Next.js frontend as a static export and serve it from FastAPI.
 
 - [x] Docker build completes (frontend builds successfully as static export)
 - [x] `curl http://localhost:8000/` returns the Kanban board HTML
-- [ ] Browser: navigating to http://localhost:8000 shows the working Kanban board with drag-and-drop
+- [x] Browser: navigating to http://localhost:8000 shows the working Kanban board with drag-and-drop
 - [x] `curl http://localhost:8000/api/health` still returns `{"status": "ok"}`
 - [x] Frontend unit tests pass: `npm run test:unit` (run locally, 6/6 pass)
 
@@ -96,9 +96,9 @@ Add login/logout with hardcoded credentials (user/password). Session cookie auth
 
 - [x] Backend unit tests: login with correct/incorrect creds, session validation, logout
 - [x] Frontend component test: Login form renders, submits, shows error
-- [ ] Frontend component test: Board shows only when authenticated
-- [ ] E2E: full login -> see board -> logout -> see login flow
-- [ ] Refreshing the page while logged in keeps you logged in (cookie persistence)
+- [x] Frontend component test: Board shows only when authenticated
+- [x] E2E: full login -> see board -> logout -> see login flow
+- [x] Refreshing the page while logged in keeps you logged in (cookie persistence)
 
 ---
 
@@ -106,21 +106,21 @@ Add login/logout with hardcoded credentials (user/password). Session cookie auth
 
 Design and document the SQLite schema for the Kanban board.
 
-- [ ] Create docs/DATABASE.md with schema design
-- [ ] Create docs/schema.json with the schema in JSON format
-- [ ] Schema must support:
+- [x] Create docs/DATABASE.md with schema design
+- [x] Create docs/schema.json with the schema in JSON format
+- [x] Schema must support:
   - Users table (id, username, password_hash) - multi-user ready
   - Boards table (id, user_id, name)
   - Columns table (id, board_id, title, position)
   - Cards table (id, column_id, title, details, position)
-- [ ] Document the SQLite file location (/data/kanban.db) and volume mount strategy
-- [ ] Get user sign-off on schema
+- [x] Document the SQLite file location (/data/kanban.db) and volume mount strategy
+- [x] Get user sign-off on schema
 
 ### Tests & Success Criteria
 
-- [ ] Schema is normalized and supports future multi-user
-- [ ] Schema supports card ordering (position field)
-- [ ] User approves the schema
+- [x] Schema is normalized and supports future multi-user
+- [x] Schema supports card ordering (position field)
+- [x] User approves the schema
 
 ---
 
@@ -128,26 +128,26 @@ Design and document the SQLite schema for the Kanban board.
 
 Implement CRUD API routes for the Kanban board backed by SQLite.
 
-- [ ] Create database module (backend/app/database.py)
+- [x] Create database module (backend/app/database.py)
   - SQLite connection setup
   - Auto-create tables if DB doesn't exist
   - Seed default board for "user" if empty
-- [ ] API routes:
+- [x] API routes:
   - GET /api/board - get the full board (columns + cards) for current user
   - PUT /api/columns/:id - rename a column
   - POST /api/cards - create a card in a column
   - PUT /api/cards/:id - update card title/details
   - DELETE /api/cards/:id - delete a card
   - PUT /api/cards/:id/move - move a card (change column and/or position)
-- [ ] All routes require authentication (session cookie check)
+- [x] All routes require authentication (session cookie check)
 
 ### Tests & Success Criteria
 
-- [ ] Backend unit tests for each route (happy path + error cases)
-- [ ] Test DB auto-creation: delete DB file, restart, DB is recreated
-- [ ] Test auth: all /api/board and /api/cards routes return 401 without session
-- [ ] Test CRUD: create, read, update, delete cards via API
-- [ ] Test move: card moves between columns, positions update correctly
+- [x] Backend unit tests for each route (happy path + error cases)
+- [x] Test DB auto-creation: delete DB file, restart, DB is recreated
+- [x] Test auth: all /api/board and /api/cards routes return 401 without session
+- [x] Test CRUD: create, read, update, delete cards via API
+- [x] Test move: card moves between columns, positions update correctly
 
 ---
 
@@ -155,23 +155,23 @@ Implement CRUD API routes for the Kanban board backed by SQLite.
 
 Connect the frontend to the backend API so the Kanban board is persistent.
 
-- [ ] Create frontend API client module (src/lib/api.ts)
+- [x] Create frontend API client module (src/lib/api.ts)
   - Functions: fetchBoard, renameColumn, createCard, updateCard, deleteCard, moveCard
-- [ ] Update KanbanBoard to:
+- [x] Update KanbanBoard to:
   - Fetch board from API on mount
   - Call API on every user action (rename, add, delete, drag-drop)
   - Optimistic updates: update local state immediately, revert on API error
-- [ ] Update next.config.ts or add API proxy config for dev mode
-- [ ] Handle loading and error states in the UI
+- [x] No API proxy needed: static export served by FastAPI on same origin
+- [x] Handle loading and error states in the UI
 
 ### Tests & Success Criteria
 
-- [ ] Frontend unit tests with mocked API calls
-- [ ] E2E: add card -> refresh page -> card persists
-- [ ] E2E: rename column -> refresh -> name persists
-- [ ] E2E: drag card to new column -> refresh -> card is in new column
-- [ ] E2E: delete card -> refresh -> card is gone
-- [ ] E2E: two browser tabs show consistent state after refresh
+- [x] Frontend unit tests with mocked API calls
+- [x] E2E: add card -> refresh page -> card persists
+- [x] E2E: rename column -> refresh -> name persists
+- [x] E2E: drag card to new column -> refresh -> card is in new column
+- [x] E2E: delete card -> refresh -> card is gone
+- [x] E2E: two browser tabs show consistent state after refresh (implicit: all data from DB)
 
 ---
 

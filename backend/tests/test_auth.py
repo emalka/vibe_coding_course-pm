@@ -1,20 +1,5 @@
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-from app.main import app, sessions
-
-
-@pytest.fixture(autouse=True)
-def clear_sessions():
-    sessions.clear()
-    yield
-    sessions.clear()
-
-
-@pytest.fixture
-def client():
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

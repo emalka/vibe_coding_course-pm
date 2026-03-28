@@ -1,0 +1,39 @@
+{
+  "tables": {
+    "users": {
+      "columns": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+        "username": { "type": "TEXT", "notNull": true, "unique": true },
+        "password_hash": { "type": "TEXT", "notNull": true }
+      }
+    },
+    "boards": {
+      "columns": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+        "user_id": { "type": "INTEGER", "notNull": true, "foreignKey": "users(id)" },
+        "name": { "type": "TEXT", "notNull": true, "default": "My Board" }
+      }
+    },
+    "columns": {
+      "columns": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+        "board_id": { "type": "INTEGER", "notNull": true, "foreignKey": "boards(id)" },
+        "title": { "type": "TEXT", "notNull": true },
+        "position": { "type": "INTEGER", "notNull": true }
+      }
+    },
+    "cards": {
+      "columns": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+        "column_id": { "type": "INTEGER", "notNull": true, "foreignKey": "columns(id)" },
+        "title": { "type": "TEXT", "notNull": true },
+        "details": { "type": "TEXT", "notNull": true, "default": "" },
+        "position": { "type": "INTEGER", "notNull": true }
+      }
+    }
+  },
+  "config": {
+    "file": "/data/kanban.db",
+    "pragmas": ["journal_mode=WAL", "foreign_keys=ON"]
+  }
+}

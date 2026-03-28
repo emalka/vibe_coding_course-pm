@@ -15,7 +15,11 @@ import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
 
-export const KanbanBoard = () => {
+type KanbanBoardProps = {
+  onLogout?: () => void;
+};
+
+export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData>(() => initialData);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
@@ -115,20 +119,31 @@ export const KanbanBoard = () => {
                 Kanban Studio
               </h1>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {board.columns.map((column, i) => (
-                <div
-                  key={column.id}
-                  className="flex items-center gap-2 rounded-lg border border-[var(--stroke)] bg-[var(--surface)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--navy-dark)]"
+            <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {board.columns.map((column, i) => (
+                  <div
+                    key={column.id}
+                    className="flex items-center gap-2 rounded-lg border border-[var(--stroke)] bg-[var(--surface)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--navy-dark)]"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: columnColors[i] }}
+                    />
+                    {column.title}
+                    <span className="ml-1 text-[var(--gray-text)]">{column.cardIds.length}</span>
+                  </div>
+                ))}
+              </div>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-lg border border-[var(--stroke)] px-3 py-1.5 text-xs font-semibold text-[var(--gray-text)] transition hover:bg-[var(--surface)] hover:text-[var(--navy-dark)]"
                 >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: columnColors[i] }}
-                  />
-                  {column.title}
-                  <span className="ml-1 text-[var(--gray-text)]">{column.cardIds.length}</span>
-                </div>
-              ))}
+                  Sign out
+                </button>
+              )}
             </div>
           </div>
         </header>

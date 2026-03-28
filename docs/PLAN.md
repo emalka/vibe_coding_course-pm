@@ -80,22 +80,22 @@ Build the Next.js frontend as a static export and serve it from FastAPI.
 
 Add login/logout with hardcoded credentials (user/password). Session cookie auth.
 
-- [ ] Backend: POST /api/login (accepts { username, password }, sets session cookie, returns success/error)
-- [ ] Backend: POST /api/logout (clears session cookie)
-- [ ] Backend: GET /api/me (returns current user if authenticated, 401 otherwise)
-- [ ] Frontend: Create a Login page/component
+- [x] Backend: POST /api/login (accepts { username, password }, sets session cookie, returns success/error)
+- [x] Backend: POST /api/logout (clears session cookie)
+- [x] Backend: GET /api/me (returns current user if authenticated, 401 otherwise)
+- [x] Frontend: Create a Login page/component
   - Form with username + password fields
   - Purple submit button, project color scheme
   - Error message on wrong credentials
-- [ ] Frontend: Update page.tsx to check auth state
+- [x] Frontend: Update page.tsx to check auth state
   - If not logged in, show Login
   - If logged in, show KanbanBoard + logout button
-- [ ] Frontend: Add logout button to the board header
+- [x] Frontend: Add logout button to the board header
 
 ### Tests & Success Criteria
 
-- [ ] Backend unit tests: login with correct/incorrect creds, session validation, logout
-- [ ] Frontend component test: Login form renders, submits, shows error
+- [x] Backend unit tests: login with correct/incorrect creds, session validation, logout
+- [x] Frontend component test: Login form renders, submits, shows error
 - [ ] Frontend component test: Board shows only when authenticated
 - [ ] E2E: full login -> see board -> logout -> see login flow
 - [ ] Refreshing the page while logged in keeps you logged in (cookie persistence)

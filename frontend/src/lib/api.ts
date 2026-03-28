@@ -95,3 +95,20 @@ export async function moveCardApi(
     body: JSON.stringify({ column_id: Number(columnId), position }),
   });
 }
+
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ChatResponse = {
+  message: string;
+  board_updates_applied: unknown[];
+};
+
+export async function sendChatMessage(
+  message: string,
+  conversationHistory: ChatMessage[]
+): Promise<ChatResponse> {
+  return request<ChatResponse>("/api/ai/chat", json({ message, conversation_history: conversationHistory }));
+}

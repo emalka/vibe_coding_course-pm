@@ -10,6 +10,7 @@ vi.mock("@/lib/api", () => ({
   createCard: vi.fn(() => Promise.resolve({ id: "99" })),
   deleteCard: vi.fn(() => Promise.resolve()),
   moveCardApi: vi.fn(() => Promise.resolve()),
+  sendChatMessage: vi.fn(() => Promise.resolve({ message: "ok", board_updates_applied: [] })),
 }));
 
 const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];

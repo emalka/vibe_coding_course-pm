@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import { moveCard, type BoardData } from "@/lib/kanban";
 import {
   fetchBoard,
@@ -31,6 +32,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -38,6 +40,10 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       .then(setBoard)
       .catch(() => setError("Failed to load board"))
       .finally(() => setLoading(false));
+  }, []);
+
+  const refreshBoard = useCallback(() => {
+    fetchBoard().then(setBoard).catch(() => {});
   }, []);
 
   const sensors = useSensors(
@@ -186,6 +192,8 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute left-0 top-0 h-[500px] w-[500px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.15)_0%,_rgba(32,157,215,0.03)_55%,_transparent_70%)]" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.10)_0%,_rgba(117,57,145,0.03)_55%,_transparent_75%)]" />
+
+      <ChatSidebar open={chatOpen} onToggle={() => setChatOpen((p) => !p)} onBoardUpdated={refreshBoard} />
 
       <main className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-8 px-6 pb-12 pt-10">
         <header className="flex flex-col gap-5 rounded-2xl border border-[var(--stroke)] bg-white/70 px-8 py-6 shadow-[var(--shadow)] backdrop-blur-sm">

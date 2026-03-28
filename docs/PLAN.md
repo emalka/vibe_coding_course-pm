@@ -224,22 +224,22 @@ AI receives the board state + user question, responds with structured output tha
 
 Add a chat sidebar to the frontend for AI interaction.
 
-- [ ] Create ChatSidebar component
+- [x] Create ChatSidebar component
   - Collapsible panel on the right side
   - Message list (user + AI messages)
   - Text input + send button
   - Loading indicator during AI calls
   - Conversation history maintained in component state (in-memory)
-- [ ] Integrate with POST /api/ai/chat
-- [ ] When AI returns board_updates_applied, re-fetch the board to show changes
-- [ ] Style to match project color scheme
-- [ ] Toggle button to open/close sidebar
+- [x] Integrate with POST /api/ai/chat
+- [x] When AI returns board_updates_applied, re-fetch the board to show changes
+- [x] Style to match project color scheme
+- [x] Toggle button to open/close sidebar
 
 ### Tests & Success Criteria
 
-- [ ] Component test: sidebar renders, accepts input, displays messages
-- [ ] Component test: loading state during AI call
-- [ ] E2E: send message -> receive AI response in chat
-- [ ] E2E: ask AI to create a card -> card appears on board without page refresh
-- [ ] E2E: ask AI to move a card -> board updates automatically
-- [ ] Chat history persists within same session, clears on page refresh
+- [x] Component test: sidebar renders, accepts input, displays messages
+- [x] Component test: loading state during AI call
+- [x] E2E: send message -> receive AI response in chat
+- [x] E2E: ask AI to create a card -> card appears on board without page refresh
+- [x] E2E: ask AI to move a card -> board updates automatically
+- [x] Chat history persists within same session, clears on page refresh

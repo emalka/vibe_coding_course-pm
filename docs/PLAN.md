@@ -179,19 +179,19 @@ Connect the frontend to the backend API so the Kanban board is persistent.
 
 Connect backend to OpenRouter API. Verify with a simple test.
 
-- [ ] Add openai (or httpx) to backend dependencies
-- [ ] Create backend/app/ai.py module
+- [x] Add openai (or httpx) to backend dependencies
+- [x] Create backend/app/ai.py module
   - Function to call OpenRouter with a prompt
   - Uses OPENROUTER_API_KEY from environment
   - Model: openai/gpt-oss-120b
-- [ ] Create test route: POST /api/ai/test (sends "What is 2+2?" and returns the response)
-- [ ] Pass .env to Docker container in start.sh
+- [x] Create test route: POST /api/ai/test (sends "What is 2+2?" and returns the response)
+- [x] Pass .env to Docker container in start.sh
 
 ### Tests & Success Criteria
 
-- [ ] Backend unit test with mocked OpenRouter response
-- [ ] Manual test: `curl -X POST http://localhost:8000/api/ai/test` returns a response containing "4"
-- [ ] Error handling: returns meaningful error if API key is missing or invalid
+- [x] Backend unit test with mocked OpenRouter response
+- [x] Manual test: `curl -X POST http://localhost:8000/api/ai/test` returns a response containing "4"
+- [x] Error handling: returns meaningful error if API key is missing or invalid
 
 ---
 
@@ -199,24 +199,24 @@ Connect backend to OpenRouter API. Verify with a simple test.
 
 AI receives the board state + user question, responds with structured output that can update the board.
 
-- [ ] Define structured output schema:
+- [x] Define structured output schema:
   - `message`: string (AI's text response to user)
   - `board_updates`: optional array of operations (create_card, update_card, move_card, delete_card)
-- [ ] Create POST /api/ai/chat endpoint
+- [x] Create POST /api/ai/chat endpoint
   - Accepts: { message, conversation_history[] }
   - Sends to AI: system prompt with board JSON + user message + history
   - Parses structured output
   - Applies board_updates to the database if present
   - Returns: { message, board_updates_applied }
-- [ ] System prompt instructs the AI on the board schema and available operations
+- [x] System prompt instructs the AI on the board schema and available operations
 
 ### Tests & Success Criteria
 
-- [ ] Backend unit tests with mocked AI responses (with and without board updates)
-- [ ] Test: AI creates a card -> card appears in DB
-- [ ] Test: AI moves a card -> card position updated in DB
-- [ ] Test: AI responds without updates -> no DB changes
-- [ ] Test: conversation history is sent correctly
+- [x] Backend unit tests with mocked AI responses (with and without board updates)
+- [x] Test: AI creates a card -> card appears in DB
+- [x] Test: AI moves a card -> card position updated in DB
+- [x] Test: AI responds without updates -> no DB changes
+- [x] Test: conversation history is sent correctly
 
 ---
 

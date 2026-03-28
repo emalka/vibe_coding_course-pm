@@ -6,6 +6,7 @@ from fastapi import Cookie, FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app.ai import chat_completion, chat_with_board
 from app.database import (
     create_card as db_create_card,
     delete_card as db_delete_card,
@@ -46,6 +47,11 @@ class UpdateCardRequest(BaseModel):
 class MoveCardRequest(BaseModel):
     column_id: int
     position: int
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: list[dict] = []
 
 
 @asynccontextmanager
@@ -198,6 +204,70 @@ async def move_card_endpoint(card_id: int, body: MoveCardRequest, session: str |
             media_type="application/json",
         )
     return {"ok": True}
+
+
+@app.post("/api/ai/chat")
+async def ai_chat(body: ChatRequest, session: str | None = Cookie(default=None)):
+    username = _get_user(session)
+    if not username:
+        return _401
+    board_data = get_board_for_user(username)
+    if board_data is None:
+        return Response(
+            content='{"detail": "Board not found"}',
+            status_code=404,
+            media_type="application/json",
+        )
+    try:
+        result = chat_with_board(board_data, body.message, body.conversation_history)
+    except Exception as exc:
+        return Response(
+            content=f'{{"detail": "AI request failed: {exc}"}}',
+            status_code=502,
+            media_type="application/json",
+        )
+    applied = _apply_board_updates(result.get("board_updates", []), username)
+    return {"message": result.get("message", ""), "board_updates_applied": applied}
+
+
+def _apply_board_updates(updates: list[dict], username: str) -> list[dict]:
+    """Apply board operations from AI response. Returns list of applied ops."""
+    applied = []
+    for op in updates:
+        kind = op.get("op")
+        if kind == "create_card":
+            card = db_create_card(op["column_id"], op["title"], op.get("details", ""), username)
+            if card:
+                applied.append({"op": "create_card", "card": card})
+        elif kind == "update_card":
+            ok = db_update_card(op["card_id"], username, title=op.get("title"), details=op.get("details"))
+            if ok:
+                applied.append({"op": "update_card", "card_id": op["card_id"]})
+        elif kind == "move_card":
+            ok = db_move_card(op["card_id"], op["column_id"], op["position"], username)
+            if ok:
+                applied.append({"op": "move_card", "card_id": op["card_id"]})
+        elif kind == "delete_card":
+            ok = db_delete_card(op["card_id"], username)
+            if ok:
+                applied.append({"op": "delete_card", "card_id": op["card_id"]})
+    return applied
+
+
+@app.post("/api/ai/test")
+async def ai_test(session: str | None = Cookie(default=None)):
+    username = _get_user(session)
+    if not username:
+        return _401
+    try:
+        answer = chat_completion("What is 2+2?")
+    except Exception as exc:
+        return Response(
+            content=f'{{"detail": "AI request failed: {exc}"}}',
+            status_code=502,
+            media_type="application/json",
+        )
+    return {"response": answer}
 
 
 # Serve static frontend - must be after API routes

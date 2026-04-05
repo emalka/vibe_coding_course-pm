@@ -2,6 +2,7 @@
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+echo "Project directory: $PROJECT_DIR"
 CONTAINER_NAME="kanban-studio"
 IMAGE_NAME="kanban-studio"
 

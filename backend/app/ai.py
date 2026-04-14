@@ -4,12 +4,12 @@ import os
 from openai import OpenAI
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-MODEL = "openai/gpt-oss-120b"
+MODEL = os.environ.get("AI_MODEL", "openai/gpt-oss-120b")
 
 SYSTEM_PROMPT = """\
 You are a helpful project management assistant for a Kanban board app.
 
-The user's current board state is provided below as JSON. Each column has an id, title, position, and a list of cards. Each card has an id, title, details, and position.
+The user's current board state is provided below as JSON. Each column has an id, title, position, and a list of cards. Each card has an id, title, and position.
 
 BOARD STATE:
 {board_json}
@@ -41,6 +41,26 @@ def _get_client() -> OpenAI:
     return OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
 
 
+def _compact_board(board: dict) -> dict:
+    """Strip card details from board before sending to AI to reduce token usage."""
+    return {
+        "id": board["id"],
+        "name": board["name"],
+        "columns": [
+            {
+                "id": col["id"],
+                "title": col["title"],
+                "position": col["position"],
+                "cards": [
+                    {"id": c["id"], "title": c["title"], "position": c["position"]}
+                    for c in col.get("cards", [])
+                ],
+            }
+            for col in board.get("columns", [])
+        ],
+    }
+
+
 def chat_completion(prompt: str) -> str:
     """Send a simple prompt to OpenRouter and return the response text."""
     client = _get_client()
@@ -52,10 +72,10 @@ def chat_completion(prompt: str) -> str:
 
 
 def chat_with_board(board: dict, message: str, conversation_history: list[dict]) -> dict:
-    """Send a chat message with board context to OpenRouter. Returns parsed structured output."""
+    """Send a chat message with compact board context to OpenRouter. Returns parsed structured output."""
     client = _get_client()
 
-    board_json = json.dumps(board, indent=2)
+    board_json = json.dumps(_compact_board(board), indent=2)
     system = SYSTEM_PROMPT.format(board_json=board_json)
 
     messages = [{"role": "system", "content": system}]
@@ -88,4 +108,3 @@ def _parse_ai_response(raw: str) -> dict:
         "message": parsed.get("message", ""),
         "board_updates": parsed.get("board_updates", []),
     }
-

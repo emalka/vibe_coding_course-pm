@@ -35,6 +35,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [opError, setOpError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,10 +46,6 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       .then(setBoard)
       .catch(() => setError("Failed to load board"))
       .finally(() => setLoading(false));
-  }, []);
-
-  const refreshBoard = useCallback(() => {
-    fetchBoard().then(setBoard).catch(() => {});
   }, []);
 
   const sensors = useSensors(
@@ -179,8 +176,11 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       }
     }
 
-    // Persist to backend: find where the card ended up
-    // Use a microtask so the state update above is applied first
+    // Capture the pre-drag snapshot now before it can be overwritten by a new drag
+    const preDragBoard = boardBeforeDrag.current;
+    boardBeforeDrag.current = null;
+
+    // Persist to backend: find where the card ended up after state has settled
     setTimeout(() => {
       setBoard((current) => {
         if (!current) return current;
@@ -188,10 +188,10 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
         if (targetCol) {
           const position = targetCol.cardIds.indexOf(activeId);
           moveCardApi(activeId, targetCol.id, position).catch(() => {
-            if (boardBeforeDrag.current) setBoard(boardBeforeDrag.current);
+            setOpError("Failed to move card. Please try again.");
+            if (preDragBoard) setBoard(preDragBoard);
           });
         }
-        boardBeforeDrag.current = null;
         return current;
       });
     }, 0);
@@ -211,7 +211,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     // Debounce the API call
     if (renameTimer.current) clearTimeout(renameTimer.current);
     renameTimer.current = setTimeout(() => {
-      apiRenameColumn(columnId, title).catch(() => {});
+      apiRenameColumn(columnId, title).catch(() => {
+        setOpError("Failed to rename column. Please try again.");
+      });
     }, 500);
   }, []);
 
@@ -236,7 +238,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       // Replace temp id with real id
       setBoard((current) => {
         if (!current) return current;
-        const { [tempId]: tempCard, ...restCards } = current.cards;
+        const { [tempId]: _removed, ...restCards } = current.cards;
         return {
           ...current,
           cards: { ...restCards, [id]: { id, title, details: details || "" } },
@@ -248,6 +250,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       });
     } catch {
       setBoard(prev);
+      setOpError("Failed to create card. Please try again.");
     }
   };
 
@@ -271,8 +274,20 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       await apiDeleteCard(cardId);
     } catch {
       setBoard(prev);
+      setOpError("Failed to delete card. Please try again.");
     }
   };
+
+  const handleBoardUpdated = useCallback((updatedBoard?: BoardData) => {
+    if (updatedBoard) {
+      setBoard(updatedBoard);
+    } else {
+      // Fallback: refetch if no board was provided
+      fetchBoard().then(setBoard).catch(() => {
+        setOpError("Failed to refresh board. Please reload the page.");
+      });
+    }
+  }, []);
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
@@ -305,7 +320,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       <div className="pointer-events-none absolute left-0 top-0 h-[500px] w-[500px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.15)_0%,_rgba(32,157,215,0.03)_55%,_transparent_70%)]" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.10)_0%,_rgba(117,57,145,0.03)_55%,_transparent_75%)]" />
 
-      <ChatSidebar open={chatOpen} onToggle={() => setChatOpen((p) => !p)} onBoardUpdated={refreshBoard} />
+      <ChatSidebar open={chatOpen} onToggle={() => setChatOpen((p) => !p)} onBoardUpdated={handleBoardUpdated} />
 
       <main className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-8 px-6 pb-12 pt-10">
         <header className="flex flex-col gap-5 rounded-2xl border border-[var(--stroke)] bg-white/70 px-8 py-6 shadow-[var(--shadow)] backdrop-blur-sm">
@@ -345,6 +360,15 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
               )}
             </div>
           </div>
+          {opError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-600 cursor-pointer"
+              onClick={() => setOpError(null)}
+            >
+              {opError} <span className="underline">Dismiss</span>
+            </div>
+          )}
         </header>
 
         <DndContext

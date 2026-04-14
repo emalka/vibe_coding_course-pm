@@ -35,10 +35,10 @@
               - generic [ref=e41]: "0"
             - generic [ref=e42]:
               - text: Review
-              - generic [ref=e44]: "3"
+              - generic [ref=e44]: "5"
             - generic [ref=e45]:
               - text: Done
-              - generic [ref=e47]: "5"
+              - generic [ref=e47]: "3"
           - button "Sign out" [ref=e48]
       - generic [ref=e49]:
         - generic [ref=e50]:
@@ -61,43 +61,43 @@
           - button "+ Add a card" [ref=e82]
         - generic [ref=e83]:
           - generic [ref=e84]:
-            - generic [ref=e87]: "3"
+            - generic [ref=e87]: "5"
             - textbox "Column title" [ref=e88]: Review
           - generic [ref=e89]:
-            - button "Refine status language Standardize column labels and tone across the board. Delete Refine status language" [ref=e90]:
+            - button "E2E Chat Test Card Delete E2E Chat Test Card" [ref=e90]:
               - generic [ref=e91]:
-                - generic [ref=e92]:
-                  - heading "Refine status language" [level=4] [ref=e93]
-                  - paragraph [ref=e94]: Standardize column labels and tone across the board.
-                - button "Delete Refine status language" [ref=e95]: Remove
-            - button "Design card layout Add hierarchy and spacing for scanning dense lists. Delete Design card layout" [ref=e96]:
-              - generic [ref=e97]:
-                - generic [ref=e98]:
-                  - heading "Design card layout" [level=4] [ref=e99]
-                  - paragraph [ref=e100]: Add hierarchy and spacing for scanning dense lists.
-                - button "Delete Design card layout" [ref=e101]: Remove
-            - button "Gather customer signals Review support tags, sales notes, and churn feedback. Delete Gather customer signals" [ref=e102]:
-              - generic [ref=e103]:
-                - generic [ref=e104]:
-                  - heading "Gather customer signals" [level=4] [ref=e105]
-                  - paragraph [ref=e106]: Review support tags, sales notes, and churn feedback.
-                - button "Delete Gather customer signals" [ref=e107]: Remove
-          - button "+ Add a card" [ref=e109]
-        - generic [ref=e110]:
-          - generic [ref=e111]:
-            - generic [ref=e114]: "5"
-            - textbox "Column title" [ref=e115]: Done
-          - generic [ref=e116]:
-            - button "E2E Chat Test Card Delete E2E Chat Test Card" [ref=e117]:
-              - generic [ref=e118]:
-                - heading "E2E Chat Test Card" [level=4] [ref=e120]
-                - button "Delete E2E Chat Test Card" [ref=e121]: Remove
-            - button "Align roadmap themes Draft quarterly themes with impact statements and metrics. Delete Align roadmap themes" [ref=e122]:
-              - generic [ref=e123]:
-                - generic [ref=e124]:
-                  - heading "Align roadmap themes" [level=4] [ref=e125]
-                  - paragraph [ref=e126]: Draft quarterly themes with impact statements and metrics.
-                - button "Delete Align roadmap themes" [ref=e127]: Remove
+                - heading "E2E Chat Test Card" [level=4] [ref=e93]
+                - button "Delete E2E Chat Test Card" [ref=e94]: Remove
+            - button "Align roadmap themes Draft quarterly themes with impact statements and metrics. Delete Align roadmap themes" [ref=e95]:
+              - generic [ref=e96]:
+                - generic [ref=e97]:
+                  - heading "Align roadmap themes" [level=4] [ref=e98]
+                  - paragraph [ref=e99]: Draft quarterly themes with impact statements and metrics.
+                - button "Delete Align roadmap themes" [ref=e100]: Remove
+            - button "Refine status language Standardize column labels and tone across the board. Delete Refine status language" [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]:
+                  - heading "Refine status language" [level=4] [ref=e104]
+                  - paragraph [ref=e105]: Standardize column labels and tone across the board.
+                - button "Delete Refine status language" [ref=e106]: Remove
+            - button "Design card layout Add hierarchy and spacing for scanning dense lists. Delete Design card layout" [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]:
+                  - heading "Design card layout" [level=4] [ref=e110]
+                  - paragraph [ref=e111]: Add hierarchy and spacing for scanning dense lists.
+                - button "Delete Design card layout" [ref=e112]: Remove
+            - button "Gather customer signals Review support tags, sales notes, and churn feedback. Delete Gather customer signals" [ref=e113]:
+              - generic [ref=e114]:
+                - generic [ref=e115]:
+                  - heading "Gather customer signals" [level=4] [ref=e116]
+                  - paragraph [ref=e117]: Review support tags, sales notes, and churn feedback.
+                - button "Delete Gather customer signals" [ref=e118]: Remove
+          - button "+ Add a card" [ref=e120]
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e125]: "3"
+            - textbox "Column title" [ref=e126]: Done
+          - generic [ref=e127]:
             - button "Ship marketing page Final copy approved and asset pack delivered. Delete Ship marketing page" [ref=e128]:
               - generic [ref=e129]:
                 - generic [ref=e130]:

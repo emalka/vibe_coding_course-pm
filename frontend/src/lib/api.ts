@@ -107,12 +107,22 @@ export type ChatMessage = {
 
 export type ChatResponse = {
   message: string;
-  board_updates_applied: unknown[];
+  board_updates_applied: Array<{ op: string; success?: boolean; [key: string]: unknown }>;
+  board?: BoardData;
 };
 
 export async function sendChatMessage(
   message: string,
   conversationHistory: ChatMessage[]
 ): Promise<ChatResponse> {
-  return request<ChatResponse>("/api/ai/chat", json({ message, conversation_history: conversationHistory }));
+  type RawChatResponse = {
+    message: string;
+    board_updates_applied: Array<{ op: string; success?: boolean; [key: string]: unknown }>;
+    board?: ApiBoard;
+  };
+  const data = await request<RawChatResponse>("/api/ai/chat", json({ message, conversation_history: conversationHistory }));
+  return {
+    ...data,
+    board: data.board ? apiBoardToLocal(data.board) : undefined,
+  };
 }

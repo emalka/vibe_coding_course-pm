@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { sendChatMessage, type ChatMessage } from "@/lib/api";
+import type { BoardData } from "@/lib/kanban";
 
 type DisplayMessage = {
   role: "user" | "assistant";
@@ -11,7 +12,7 @@ type DisplayMessage = {
 type ChatSidebarProps = {
   open: boolean;
   onToggle: () => void;
-  onBoardUpdated: () => void;
+  onBoardUpdated: (board?: BoardData) => void;
 };
 
 export const ChatSidebar = ({ open, onToggle, onBoardUpdated }: ChatSidebarProps) => {
@@ -44,7 +45,8 @@ export const ChatSidebar = ({ open, onToggle, onBoardUpdated }: ChatSidebarProps
       const res = await sendChatMessage(text, buildHistory());
       setMessages((prev) => [...prev, { role: "assistant", content: res.message }]);
       if (res.board_updates_applied.length > 0) {
-        onBoardUpdated();
+        // Pass the fresh board from the response if available; caller falls back to refetch
+        onBoardUpdated(res.board);
       }
     } catch {
       setMessages((prev) => [

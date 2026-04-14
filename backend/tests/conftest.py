@@ -2,7 +2,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 import app.database as database
-from app.main import app, sessions
+from app.database import clear_all_sessions
+from app.main import app
 
 
 @pytest.fixture(autouse=True)
@@ -15,10 +16,10 @@ def setup_test_db(tmp_path):
 
 
 @pytest.fixture(autouse=True)
-def clear_sessions():
-    sessions.clear()
+def clear_sessions(setup_test_db):  # must run after DB is initialised
+    clear_all_sessions()
     yield
-    sessions.clear()
+    clear_all_sessions()
 
 
 @pytest.fixture

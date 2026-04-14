@@ -1,9 +1,17 @@
 import os
 import sqlite3
+import time
+import uuid
 
 import bcrypt
 
 _db_path: str = os.environ.get("DATABASE_PATH", "/data/kanban.db")
+
+SESSION_TTL = 60 * 60 * 24  # 24 hours
+
+
+def _now() -> int:
+    return int(time.time())
 
 
 def get_connection() -> sqlite3.Connection:
@@ -41,6 +49,11 @@ def init_db():
                 details TEXT NOT NULL DEFAULT '',
                 position INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS sessions (
+                token TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                expires_at INTEGER NOT NULL
+            );
         """)
         user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if user_count == 0:
@@ -49,6 +62,56 @@ def init_db():
     finally:
         conn.close()
 
+
+# ---------- Session management ----------
+
+def create_session(username: str) -> str:
+    token = uuid.uuid4().hex + uuid.uuid4().hex  # 64-char random token
+    expires_at = _now() + SESSION_TTL
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO sessions (token, username, expires_at) VALUES (?, ?, ?)",
+            (token, username, expires_at),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return token
+
+
+def get_session_user(token: str) -> str | None:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT username FROM sessions WHERE token = ? AND expires_at > ?",
+            (token, _now()),
+        ).fetchone()
+        return row["username"] if row else None
+    finally:
+        conn.close()
+
+
+def delete_session(token: str) -> None:
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_all_sessions() -> None:
+    """Delete all sessions. Used in tests."""
+    conn = get_connection()
+    try:
+        conn.execute("DELETE FROM sessions")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ---------- Auth ----------
 
 def verify_user(username: str, password: str) -> bool:
     conn = get_connection()
@@ -62,6 +125,8 @@ def verify_user(username: str, password: str) -> bool:
     finally:
         conn.close()
 
+
+# ---------- Board ----------
 
 def get_board_for_user(username: str) -> dict | None:
     conn = get_connection()
@@ -78,28 +143,42 @@ def get_board_for_user(username: str) -> dict | None:
         if board is None:
             return None
 
-        cols = conn.execute(
-            "SELECT id, title, position FROM columns WHERE board_id = ? ORDER BY position",
-            (board["id"],),
-        ).fetchall()
+        # Single JOIN instead of N+1 per-column queries
+        rows = conn.execute("""
+            SELECT
+                col.id   AS col_id,   col.title AS col_title, col.position AS col_pos,
+                ca.id    AS card_id,  ca.title  AS card_title,
+                ca.details AS card_details, ca.position AS card_pos
+            FROM columns col
+            LEFT JOIN cards ca ON ca.column_id = col.id
+            WHERE col.board_id = ?
+            ORDER BY col.position, ca.position
+        """, (board["id"],)).fetchall()
 
-        columns = []
-        for col in cols:
-            cards = conn.execute(
-                "SELECT id, title, details, position FROM cards WHERE column_id = ? ORDER BY position",
-                (col["id"],),
-            ).fetchall()
-            columns.append({
-                "id": col["id"],
-                "title": col["title"],
-                "position": col["position"],
-                "cards": [dict(c) for c in cards],
-            })
+        columns_dict: dict[int, dict] = {}
+        for row in rows:
+            col_id = row["col_id"]
+            if col_id not in columns_dict:
+                columns_dict[col_id] = {
+                    "id": col_id,
+                    "title": row["col_title"],
+                    "position": row["col_pos"],
+                    "cards": [],
+                }
+            if row["card_id"] is not None:
+                columns_dict[col_id]["cards"].append({
+                    "id": row["card_id"],
+                    "title": row["card_title"],
+                    "details": row["card_details"],
+                    "position": row["card_pos"],
+                })
 
-        return {"id": board["id"], "name": board["name"], "columns": columns}
+        return {"id": board["id"], "name": board["name"], "columns": list(columns_dict.values())}
     finally:
         conn.close()
 
+
+# ---------- Column ----------
 
 def rename_column(column_id: int, title: str, username: str) -> bool:
     conn = get_connection()
@@ -118,6 +197,8 @@ def rename_column(column_id: int, title: str, username: str) -> bool:
     finally:
         conn.close()
 
+
+# ---------- Cards ----------
 
 def create_card(column_id: int, title: str, details: str, username: str) -> dict | None:
     conn = get_connection()
@@ -201,7 +282,10 @@ def delete_card(card_id: int, username: str) -> bool:
 
 
 def move_card(card_id: int, target_column_id: int, target_position: int, username: str) -> bool:
+    """Move a card atomically using BEGIN IMMEDIATE to prevent concurrent position corruption."""
     conn = get_connection()
+    conn.isolation_level = None  # manual transaction control
+    conn.execute("BEGIN IMMEDIATE")
     try:
         card = conn.execute("""
             SELECT ca.id, ca.column_id, ca.position FROM cards ca
@@ -211,6 +295,7 @@ def move_card(card_id: int, target_column_id: int, target_position: int, usernam
             WHERE ca.id = ? AND u.username = ?
         """, (card_id, username)).fetchone()
         if card is None:
+            conn.execute("ROLLBACK")
             return False
 
         target_col = conn.execute("""
@@ -220,18 +305,19 @@ def move_card(card_id: int, target_column_id: int, target_position: int, usernam
             WHERE c.id = ? AND u.username = ?
         """, (target_column_id, username)).fetchone()
         if target_col is None:
+            conn.execute("ROLLBACK")
             return False
 
         source_column_id = card["column_id"]
         source_position = card["position"]
 
-        # Remove from source column (exclude moving card)
+        # Remove gap in source column
         conn.execute("""
             UPDATE cards SET position = position - 1
             WHERE column_id = ? AND position > ? AND id != ?
         """, (source_column_id, source_position, card_id))
 
-        # Make space in target column (exclude moving card)
+        # Make room in target column
         conn.execute("""
             UPDATE cards SET position = position + 1
             WHERE column_id = ? AND position >= ? AND id != ?
@@ -243,17 +329,24 @@ def move_card(card_id: int, target_column_id: int, target_position: int, usernam
             (target_column_id, target_position, card_id),
         )
 
-        conn.commit()
+        conn.execute("COMMIT")
         return True
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
     finally:
         conn.close()
 
 
+# ---------- Seed ----------
+
 def _seed(conn: sqlite3.Connection):
-    pw_hash = bcrypt.hashpw(b"password", bcrypt.gensalt()).decode()
+    username = os.environ.get("ADMIN_USERNAME", "user")
+    password = os.environ.get("ADMIN_PASSWORD", "password")
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     conn.execute(
         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-        ("user", pw_hash),
+        (username, pw_hash),
     )
     conn.execute("INSERT INTO boards (user_id, name) VALUES (1, 'My Board')")
 

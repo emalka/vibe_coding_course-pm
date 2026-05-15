@@ -1,303 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  pointerWithin,
-  type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
-  type CollisionDetection,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { useState } from "react";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { ChatSidebar } from "@/components/ChatSidebar";
-import type { BoardData } from "@/lib/kanban";
-import {
-  fetchBoard,
-  renameColumn as apiRenameColumn,
-  createCard as apiCreateCard,
-  deleteCard as apiDeleteCard,
-  moveCardApi,
-} from "@/lib/api";
+import { useBoard } from "@/lib/hooks/useBoard";
+import { useBoardDnd } from "@/lib/hooks/useBoardDnd";
+
+const COLUMN_COLORS = [
+  "var(--col-backlog)",
+  "var(--col-discovery)",
+  "var(--col-progress)",
+  "var(--col-review)",
+  "var(--col-done)",
+];
 
 type KanbanBoardProps = {
   onLogout?: () => void;
 };
 
 export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
-  const [board, setBoard] = useState<BoardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [opError, setOpError] = useState<string | null>(null);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const {
+    board,
+    setBoard,
+    loading,
+    error,
+    opError,
+    setOpError,
+    renameColumn,
+    addCard,
+    deleteCard,
+    refresh,
+    applyAiUpdate,
+  } = useBoard();
+
+  const {
+    activeCardId,
+    sensors,
+    collisionDetection,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+  } = useBoardDnd({ board, setBoard, refresh, setOpError });
+
   const [chatOpen, setChatOpen] = useState(false);
-  const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const boardBeforeDrag = useRef<BoardData | null>(null);
-
-  useEffect(() => {
-    fetchBoard()
-      .then(setBoard)
-      .catch(() => setError("Failed to load board"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    })
-  );
-
-  const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
-
-  const columnIds = useMemo(
-    () => new Set(board?.columns.map((c) => c.id) ?? []),
-    [board?.columns]
-  );
-
-  const findColumnOfCard = useCallback(
-    (cardId: string): string | undefined => {
-      if (!board) return undefined;
-      if (columnIds.has(cardId)) return cardId;
-      return board.columns.find((c) => c.cardIds.includes(cardId))?.id;
-    },
-    [board, columnIds]
-  );
-
-  // Custom collision detection: use pointerWithin to find which column the
-  // pointer is in, then closestCenter for card-level precision within it.
-  const collisionDetection: CollisionDetection = useCallback(
-    (args) => {
-      const pointerCollisions = pointerWithin(args);
-      const colHit = pointerCollisions.find((c) => columnIds.has(c.id as string));
-
-      if (colHit) {
-        // Find the closest card within the target column
-        const centerCollisions = closestCenter(args);
-        const cardInCol = centerCollisions.find((c) => {
-          const id = c.id as string;
-          if (columnIds.has(id)) return false;
-          const col = board?.columns.find((col) => col.id === colHit.id);
-          return col?.cardIds.includes(id);
-        });
-        return [cardInCol ?? colHit];
-      }
-
-      return [];
-    },
-    [columnIds, board]
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string);
-    boardBeforeDrag.current = board;
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over || !board) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-    const activeCol = findColumnOfCard(activeId);
-    const overCol = findColumnOfCard(overId);
-
-    if (!activeCol || !overCol || activeCol === overCol) return;
-
-    // Card is being dragged over a different column — move it there in state
-    setBoard((prev) => {
-      if (!prev) return prev;
-      const srcCol = prev.columns.find((c) => c.id === activeCol)!;
-      const dstCol = prev.columns.find((c) => c.id === overCol)!;
-
-      const srcCards = srcCol.cardIds.filter((id) => id !== activeId);
-      const dstCards = [...dstCol.cardIds];
-
-      // Insert at the position of the hovered card, or at the end if hovering the column itself
-      const overIndex = columnIds.has(overId)
-        ? dstCards.length
-        : dstCards.indexOf(overId);
-      const insertAt = overIndex === -1 ? dstCards.length : overIndex;
-      dstCards.splice(insertAt, 0, activeId);
-
-      return {
-        ...prev,
-        columns: prev.columns.map((col) => {
-          if (col.id === activeCol) return { ...col, cardIds: srcCards };
-          if (col.id === overCol) return { ...col, cardIds: dstCards };
-          return col;
-        }),
-      };
-    });
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveCardId(null);
-
-    if (!over || !board) {
-      // Cancelled — revert
-      if (boardBeforeDrag.current) setBoard(boardBeforeDrag.current);
-      boardBeforeDrag.current = null;
-      return;
-    }
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeCol = findColumnOfCard(activeId);
-    const overCol = findColumnOfCard(overId);
-
-    if (activeCol && overCol && activeCol === overCol) {
-      // Within same column — reorder
-      const col = board.columns.find((c) => c.id === activeCol)!;
-      const oldIndex = col.cardIds.indexOf(activeId);
-      const newIndex = columnIds.has(overId)
-        ? col.cardIds.length - 1
-        : col.cardIds.indexOf(overId);
-
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        const newCardIds = arrayMove(col.cardIds, oldIndex, newIndex);
-        setBoard((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            columns: prev.columns.map((c) =>
-              c.id === activeCol ? { ...c, cardIds: newCardIds } : c
-            ),
-          };
-        });
-      }
-    }
-
-    // Capture the pre-drag snapshot now before it can be overwritten by a new drag
-    const preDragBoard = boardBeforeDrag.current;
-    boardBeforeDrag.current = null;
-
-    // Persist to backend: find where the card ended up after state has settled
-    setTimeout(() => {
-      setBoard((current) => {
-        if (!current) return current;
-        const targetCol = current.columns.find((c) => c.cardIds.includes(activeId));
-        if (targetCol) {
-          const position = targetCol.cardIds.indexOf(activeId);
-          moveCardApi(activeId, targetCol.id, position).catch(() => {
-            setOpError("Failed to move card. Please try again.");
-            if (preDragBoard) setBoard(preDragBoard);
-          });
-        }
-        return current;
-      });
-    }, 0);
-  };
-
-  const handleRenameColumn = useCallback((columnId: string, title: string) => {
-    setBoard((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        columns: prev.columns.map((column) =>
-          column.id === columnId ? { ...column, title } : column
-        ),
-      };
-    });
-
-    // Debounce the API call
-    if (renameTimer.current) clearTimeout(renameTimer.current);
-    renameTimer.current = setTimeout(() => {
-      apiRenameColumn(columnId, title).catch(() => {
-        setOpError("Failed to rename column. Please try again.");
-      });
-    }, 500);
-  }, []);
-
-  const handleAddCard = async (columnId: string, title: string, details: string) => {
-    if (!board) return;
-    const prev = board;
-
-    // Optimistic: add with temp id
-    const tempId = `temp-${Date.now()}`;
-    setBoard({
-      ...prev,
-      cards: { ...prev.cards, [tempId]: { id: tempId, title, details: details || "" } },
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: [...column.cardIds, tempId] }
-          : column
-      ),
-    });
-
-    try {
-      const { id } = await apiCreateCard(columnId, title, details);
-      // Replace temp id with real id
-      setBoard((current) => {
-        if (!current) return current;
-        const { [tempId]: _removed, ...restCards } = current.cards;
-        return {
-          ...current,
-          cards: { ...restCards, [id]: { id, title, details: details || "" } },
-          columns: current.columns.map((column) => ({
-            ...column,
-            cardIds: column.cardIds.map((cid) => (cid === tempId ? id : cid)),
-          })),
-        };
-      });
-    } catch {
-      setBoard(prev);
-      setOpError("Failed to create card. Please try again.");
-    }
-  };
-
-  const handleDeleteCard = async (columnId: string, cardId: string) => {
-    if (!board) return;
-    const prev = board;
-
-    setBoard({
-      ...prev,
-      cards: Object.fromEntries(
-        Object.entries(prev.cards).filter(([id]) => id !== cardId)
-      ),
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }
-          : column
-      ),
-    });
-
-    try {
-      await apiDeleteCard(cardId);
-    } catch {
-      setBoard(prev);
-      setOpError("Failed to delete card. Please try again.");
-    }
-  };
-
-  const handleBoardUpdated = useCallback((updatedBoard?: BoardData) => {
-    if (updatedBoard) {
-      setBoard(updatedBoard);
-    } else {
-      // Fallback: refetch if no board was provided
-      fetchBoard().then(setBoard).catch(() => {
-        setOpError("Failed to refresh board. Please reload the page.");
-      });
-    }
-  }, []);
-
-  const activeCard = activeCardId ? cardsById[activeCardId] : null;
-
-  const columnColors = [
-    "var(--col-backlog)",
-    "var(--col-discovery)",
-    "var(--col-progress)",
-    "var(--col-review)",
-    "var(--col-done)",
-  ];
+  const activeCard = activeCardId && board ? board.cards[activeCardId] : null;
 
   if (loading) {
     return (
@@ -320,7 +68,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       <div className="pointer-events-none absolute left-0 top-0 h-[500px] w-[500px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.15)_0%,_rgba(32,157,215,0.03)_55%,_transparent_70%)]" />
       <div className="pointer-events-none absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.10)_0%,_rgba(117,57,145,0.03)_55%,_transparent_75%)]" />
 
-      <ChatSidebar open={chatOpen} onToggle={() => setChatOpen((p) => !p)} onBoardUpdated={handleBoardUpdated} />
+      <ChatSidebar open={chatOpen} onToggle={() => setChatOpen((p) => !p)} onBoardUpdated={applyAiUpdate} />
 
       <main className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-8 px-6 pb-12 pt-10">
         <header className="flex flex-col gap-5 rounded-2xl border border-[var(--stroke)] bg-white/70 px-8 py-6 shadow-[var(--shadow)] backdrop-blur-sm">
@@ -342,7 +90,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                   >
                     <span
                       className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: columnColors[i] }}
+                      style={{ backgroundColor: COLUMN_COLORS[i] }}
                     />
                     {column.title}
                     <span className="ml-1 text-[var(--gray-text)]">{column.cardIds.length}</span>
@@ -384,10 +132,10 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                 key={column.id}
                 column={column}
                 cards={column.cardIds.map((cardId) => board.cards[cardId])}
-                accentColor={columnColors[i]}
-                onRename={handleRenameColumn}
-                onAddCard={handleAddCard}
-                onDeleteCard={handleDeleteCard}
+                accentColor={COLUMN_COLORS[i]}
+                onRename={renameColumn}
+                onAddCard={addCard}
+                onDeleteCard={deleteCard}
               />
             ))}
           </section>

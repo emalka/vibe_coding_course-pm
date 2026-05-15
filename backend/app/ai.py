@@ -37,8 +37,8 @@ Position 0 means the top of a column.\
 
 
 def _get_client() -> OpenAI:
-    api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    return OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
+    api_key = os.environ["OPENROUTER_API_KEY"]
+    return OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key, timeout=30.0)
 
 
 def _compact_board(board: dict) -> dict:

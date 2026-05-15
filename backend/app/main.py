@@ -1,6 +1,9 @@
 import logging
+import os
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
@@ -52,13 +55,23 @@ class MoveCardRequest(BaseModel):
     position: int
 
 
+class ConversationTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
-    conversation_history: list[dict] = []
+    conversation_history: list[ConversationTurn] = Field(default_factory=list, max_length=20)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if "OPENROUTER_API_KEY" not in os.environ:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY environment variable is not set. "
+            "Set it in .env or in the shell before starting the server."
+        )
     init_db()
     yield
 
@@ -68,7 +81,6 @@ app = FastAPI(title="Kanban Studio API", lifespan=lifespan)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
-    import uuid
     request_id = uuid.uuid4().hex[:12]
     request.state.request_id = request_id
     response = await call_next(request)
@@ -181,8 +193,9 @@ async def ai_chat(body: ChatRequest, session: str | None = Cookie(default=None))
     board_data = get_board_for_user(username)
     if board_data is None:
         raise HTTPException(status_code=404, detail="Board not found")
+    history = [t.model_dump() for t in body.conversation_history]
     try:
-        result = chat_with_board(board_data, body.message, body.conversation_history)
+        result = chat_with_board(board_data, body.message, history)
     except Exception:
         logger.exception("AI request failed")
         raise HTTPException(status_code=502, detail="AI request failed")

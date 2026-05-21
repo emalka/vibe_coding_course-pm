@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 
 import app.database as database
 from app.database import clear_all_sessions
-from app.main import app
+from app.main import _reset_rate_limiter, app
 
 
 @pytest.fixture(autouse=True)
@@ -18,8 +18,10 @@ def setup_test_db(tmp_path):
 @pytest.fixture(autouse=True)
 def clear_sessions(setup_test_db):  # must run after DB is initialised
     clear_all_sessions()
+    _reset_rate_limiter()
     yield
     clear_all_sessions()
+    _reset_rate_limiter()
 
 
 @pytest.fixture

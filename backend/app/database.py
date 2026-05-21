@@ -282,7 +282,14 @@ def delete_card(card_id: int, username: str) -> bool:
 
 
 def move_card(card_id: int, target_column_id: int, target_position: int, username: str) -> bool:
-    """Move a card atomically using BEGIN IMMEDIATE to prevent concurrent position corruption."""
+    """Move a card atomically using BEGIN IMMEDIATE to prevent concurrent position corruption.
+
+    target_position is clamped to a valid range so callers (especially the AI) can't
+    create gaps with out-of-range values.
+    """
+    if target_position < 0:
+        return False
+
     conn = get_connection()
     conn.isolation_level = None  # manual transaction control
     conn.execute("BEGIN IMMEDIATE")
@@ -310,6 +317,14 @@ def move_card(card_id: int, target_column_id: int, target_position: int, usernam
 
         source_column_id = card["column_id"]
         source_position = card["position"]
+
+        # Clamp target_position to the contiguous-position range to avoid gaps.
+        # Excludes the moved card if it's already in the target column.
+        target_count = conn.execute(
+            "SELECT COUNT(*) FROM cards WHERE column_id = ? AND id != ?",
+            (target_column_id, card_id),
+        ).fetchone()[0]
+        target_position = min(target_position, target_count)
 
         # Remove gap in source column
         conn.execute("""

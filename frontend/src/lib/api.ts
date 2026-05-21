@@ -40,7 +40,16 @@ function apiBoardToLocal(api: ApiBoard): BoardData {
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    let detail: string | undefined;
+    try {
+      const body = await res.json();
+      if (body && typeof body.detail === "string") {
+        detail = body.detail;
+      }
+    } catch {
+      // body wasn't JSON; fall through to status-only message.
+    }
+    throw new Error(detail ?? `API error: ${res.status}`);
   }
   return res.json();
 }

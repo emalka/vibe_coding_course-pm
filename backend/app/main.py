@@ -1,17 +1,18 @@
 import logging
 import os
+import time
 import uuid
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal, Union
 
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.ai import chat_completion, chat_with_board
 from app.database import (
-    clear_all_sessions,
     create_card as db_create_card,
     create_session,
     delete_card as db_delete_card,
@@ -28,6 +29,30 @@ from app.database import (
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
+
+# Production should set SESSION_COOKIE_SECURE=1 (requires HTTPS). Default off for local HTTP.
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
+
+# Login brute-force throttle: per-IP sliding window.
+LOGIN_RATE_LIMIT_MAX = int(os.environ.get("LOGIN_RATE_LIMIT_MAX", "10"))
+LOGIN_RATE_LIMIT_WINDOW = int(os.environ.get("LOGIN_RATE_LIMIT_WINDOW", "60"))
+_login_attempts: dict[str, deque] = defaultdict(deque)
+
+
+def _check_login_rate_limit(ip: str) -> None:
+    now = time.time()
+    bucket = _login_attempts[ip]
+    cutoff = now - LOGIN_RATE_LIMIT_WINDOW
+    while bucket and bucket[0] < cutoff:
+        bucket.popleft()
+    if len(bucket) >= LOGIN_RATE_LIMIT_MAX:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again shortly.")
+    bucket.append(now)
+
+
+def _reset_rate_limiter() -> None:
+    """Test helper — clears the login attempt buckets."""
+    _login_attempts.clear()
 
 
 class LoginRequest(BaseModel):
@@ -63,6 +88,43 @@ class ConversationTurn(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     conversation_history: list[ConversationTurn] = Field(default_factory=list, max_length=20)
+
+
+class CreateCardOp(BaseModel):
+    op: Literal["create_card"]
+    column_id: int
+    title: str = Field(..., min_length=1, max_length=255)
+    details: str = Field("", max_length=5000)
+
+
+class UpdateCardOp(BaseModel):
+    op: Literal["update_card"]
+    card_id: int
+    title: str | None = Field(None, min_length=1, max_length=255)
+    details: str | None = Field(None, max_length=5000)
+
+
+class MoveCardOp(BaseModel):
+    op: Literal["move_card"]
+    card_id: int
+    column_id: int
+    position: int = Field(..., ge=0)
+
+
+class DeleteCardOp(BaseModel):
+    op: Literal["delete_card"]
+    card_id: int
+
+
+BoardOp = Annotated[
+    Union[CreateCardOp, UpdateCardOp, MoveCardOp, DeleteCardOp],
+    Field(discriminator="op"),
+]
+
+
+class _BoardOpEnvelope(BaseModel):
+    """Wrapper so we can use the discriminated union via TypeAdapter-free validation."""
+    op: BoardOp
 
 
 @asynccontextmanager
@@ -107,7 +169,9 @@ async def health():
 
 
 @app.post("/api/login")
-async def login(body: LoginRequest, response: Response):
+async def login(body: LoginRequest, request: Request, response: Response):
+    ip = request.client.host if request.client else "anonymous"
+    _check_login_rate_limit(ip)
     if not verify_user(body.username, body.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_session(body.username)
@@ -116,6 +180,7 @@ async def login(body: LoginRequest, response: Response):
         value=token,
         httponly=True,
         samesite="strict",  # prevent cross-site request forgery
+        secure=SESSION_COOKIE_SECURE,
         max_age=60 * 60 * 24,
     )
     return {"ok": True, "username": body.username}
@@ -205,26 +270,35 @@ async def ai_chat(body: ChatRequest, session: str | None = Cookie(default=None))
     return {"message": result.get("message", ""), "board_updates_applied": applied, "board": updated_board}
 
 
+MAX_BOARD_OPS_PER_TURN = 50
+
+
 def _apply_board_updates(updates: list[dict], username: str) -> list[dict]:
-    """Apply board operations from AI response. Returns per-op results including failures."""
-    applied = []
-    for op in updates:
-        kind = op.get("op")
-        if kind == "create_card":
-            card = db_create_card(op["column_id"], op["title"], op.get("details", ""), username)
+    """Validate and apply board operations from AI response. Malformed ops are recorded as failures, never raised."""
+    applied: list[dict] = []
+    for raw in updates[:MAX_BOARD_OPS_PER_TURN]:
+        kind = raw.get("op") if isinstance(raw, dict) else None
+        try:
+            op = _BoardOpEnvelope.model_validate({"op": raw}).op
+        except ValidationError as e:
+            applied.append({"op": kind, "success": False, "reason": f"invalid op: {e.errors()[0]['msg']}"})
+            continue
+
+        if isinstance(op, CreateCardOp):
+            card = db_create_card(op.column_id, op.title, op.details, username)
             if card:
                 applied.append({"op": "create_card", "success": True, "card": card})
             else:
                 applied.append({"op": "create_card", "success": False, "reason": "column not found"})
-        elif kind == "update_card":
-            ok = db_update_card(op["card_id"], username, title=op.get("title"), details=op.get("details"))
-            applied.append({"op": "update_card", "card_id": op["card_id"], "success": ok})
-        elif kind == "move_card":
-            ok = db_move_card(op["card_id"], op["column_id"], op["position"], username)
-            applied.append({"op": "move_card", "card_id": op["card_id"], "success": ok})
-        elif kind == "delete_card":
-            ok = db_delete_card(op["card_id"], username)
-            applied.append({"op": "delete_card", "card_id": op["card_id"], "success": ok})
+        elif isinstance(op, UpdateCardOp):
+            ok = db_update_card(op.card_id, username, title=op.title, details=op.details)
+            applied.append({"op": "update_card", "card_id": op.card_id, "success": ok})
+        elif isinstance(op, MoveCardOp):
+            ok = db_move_card(op.card_id, op.column_id, op.position, username)
+            applied.append({"op": "move_card", "card_id": op.card_id, "success": ok})
+        elif isinstance(op, DeleteCardOp):
+            ok = db_delete_card(op.card_id, username)
+            applied.append({"op": "delete_card", "card_id": op.card_id, "success": ok})
     return applied
 
 

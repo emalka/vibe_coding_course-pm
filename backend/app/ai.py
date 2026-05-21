@@ -75,7 +75,7 @@ def chat_with_board(board: dict, message: str, conversation_history: list[dict])
     """Send a chat message with compact board context to OpenRouter. Returns parsed structured output."""
     client = _get_client()
 
-    board_json = json.dumps(_compact_board(board), indent=2)
+    board_json = json.dumps(_compact_board(board))
     system = SYSTEM_PROMPT.format(board_json=board_json)
 
     messages = [{"role": "system", "content": system}]
@@ -85,24 +85,65 @@ def chat_with_board(board: dict, message: str, conversation_history: list[dict])
     response = client.chat.completions.create(
         model=MODEL,
         messages=messages,
+        response_format={"type": "json_object"},
     )
 
     raw = response.choices[0].message.content or "{}"
     return _parse_ai_response(raw)
 
 
+def _extract_json_object(text: str) -> str | None:
+    """Return the first balanced {...} substring, or None if there isn't one.
+
+    Used as a fallback when the model wraps JSON in prose despite the json_object hint.
+    """
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+    return None
+
+
 def _parse_ai_response(raw: str) -> dict:
-    """Parse AI response JSON, handling markdown fences if present."""
+    """Parse AI response JSON. Tolerates markdown fences or prose wrappers."""
     text = raw.strip()
+
+    # Strip ```json ... ``` wrapper if present.
     if text.startswith("```"):
-        # Strip ```json ... ``` wrapper
         lines = text.split("\n")
-        lines = lines[1:]  # remove opening fence
+        lines = lines[1:]  # drop opening fence
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
-        text = "\n".join(lines)
+        text = "\n".join(lines).strip()
 
-    parsed = json.loads(text)
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        # Fallback: find the first balanced JSON object anywhere in the response.
+        candidate = _extract_json_object(text)
+        if candidate is None:
+            raise
+        parsed = json.loads(candidate)
 
     return {
         "message": parsed.get("message", ""),

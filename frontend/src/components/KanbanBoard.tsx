@@ -90,7 +90,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                   >
                     <span
                       className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: COLUMN_COLORS[i] }}
+                      style={{ backgroundColor: COLUMN_COLORS[i % COLUMN_COLORS.length] }}
                     />
                     {column.title}
                     <span className="ml-1 text-[var(--gray-text)]">{column.cardIds.length}</span>
@@ -132,7 +132,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
                 key={column.id}
                 column={column}
                 cards={column.cardIds.map((cardId) => board.cards[cardId])}
-                accentColor={COLUMN_COLORS[i]}
+                accentColor={COLUMN_COLORS[i % COLUMN_COLORS.length]}
                 onRename={renameColumn}
                 onAddCard={addCard}
                 onDeleteCard={deleteCard}

@@ -21,22 +21,15 @@ export type UseBoard = {
   applyAiUpdate: (updated?: BoardData) => void;
 };
 
+const RENAME_DEBOUNCE_MS = 500;
+
 export function useBoard(): UseBoard {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [opError, setOpError] = useState<string | null>(null);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    fetchBoard()
-      .then(setBoard)
-      .catch(() => setError("Failed to load board"))
-      .finally(() => setLoading(false));
-    return () => {
-      if (renameTimer.current) clearTimeout(renameTimer.current);
-    };
-  }, []);
+  const pendingRename = useRef<{ columnId: string; title: string } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -47,85 +40,170 @@ export function useBoard(): UseBoard {
     }
   }, []);
 
-  const renameColumn = useCallback((columnId: string, title: string) => {
-    setBoard((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        columns: prev.columns.map((column) =>
-          column.id === columnId ? { ...column, title } : column
-        ),
-      };
-    });
+  useEffect(() => {
+    fetchBoard()
+      .then(setBoard)
+      .catch(() => setError("Failed to load board"))
+      .finally(() => setLoading(false));
 
-    if (renameTimer.current) clearTimeout(renameTimer.current);
-    renameTimer.current = setTimeout(() => {
-      apiRenameColumn(columnId, title).catch(() => {
-        setOpError("Failed to rename column. Please try again.");
-      });
-    }, 500);
+    return () => {
+      // Flush any pending rename so the user's last keystroke isn't lost on unmount.
+      if (renameTimer.current) clearTimeout(renameTimer.current);
+      const pending = pendingRename.current;
+      if (pending) {
+        pendingRename.current = null;
+        const apiId = pending.columnId.replace(/^col-/, "");
+        // keepalive lets the request survive even if the tab is closing.
+        fetch(`/api/columns/${apiId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: pending.title }),
+          keepalive: true,
+        }).catch(() => {
+          // Best-effort flush; if it fails the next mount will refetch.
+        });
+      }
+    };
   }, []);
 
-  const addCard = async (columnId: string, title: string, details: string) => {
-    if (!board) return;
-    const prev = board;
-    const tempId = `temp-${crypto.randomUUID()}`;
+  const renameColumn = useCallback(
+    (columnId: string, title: string) => {
+      setBoard((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          columns: prev.columns.map((column) =>
+            column.id === columnId ? { ...column, title } : column
+          ),
+        };
+      });
 
-    setBoard({
-      ...prev,
-      cards: { ...prev.cards, [tempId]: { id: tempId, title, details: details || "" } },
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: [...column.cardIds, tempId] }
-          : column
-      ),
-    });
+      pendingRename.current = { columnId, title };
+      if (renameTimer.current) clearTimeout(renameTimer.current);
+      renameTimer.current = setTimeout(() => {
+        const pending = pendingRename.current;
+        pendingRename.current = null;
+        if (!pending) return;
+        apiRenameColumn(pending.columnId, pending.title).catch(() => {
+          setOpError("Failed to rename column. Reverting to the saved title.");
+          // Refetch so the UI matches what's actually persisted.
+          refresh();
+        });
+      }, RENAME_DEBOUNCE_MS);
+    },
+    [refresh]
+  );
 
-    try {
-      const { id } = await apiCreateCard(columnId, title, details);
+  const addCard = useCallback(
+    async (columnId: string, title: string, details: string) => {
+      const tempId = `temp-${crypto.randomUUID()}`;
+
       setBoard((current) => {
         if (!current) return current;
+        return {
+          ...current,
+          cards: {
+            ...current.cards,
+            [tempId]: { id: tempId, title, details: details || "" },
+          },
+          columns: current.columns.map((column) =>
+            column.id === columnId
+              ? { ...column, cardIds: [...column.cardIds, tempId] }
+              : column
+          ),
+        };
+      });
+
+      try {
+        const { id } = await apiCreateCard(columnId, title, details);
+        setBoard((current) => {
+          if (!current) return current;
+          const restCards = Object.fromEntries(
+            Object.entries(current.cards).filter(([cid]) => cid !== tempId)
+          );
+          return {
+            ...current,
+            cards: { ...restCards, [id]: { id, title, details: details || "" } },
+            columns: current.columns.map((column) => ({
+              ...column,
+              cardIds: column.cardIds.map((cid) => (cid === tempId ? id : cid)),
+            })),
+          };
+        });
+      } catch (err) {
+        // Roll back just the temp card, leaving any unrelated optimistic state alone.
+        setBoard((current) => {
+          if (!current) return current;
+          const restCards = Object.fromEntries(
+            Object.entries(current.cards).filter(([cid]) => cid !== tempId)
+          );
+          return {
+            ...current,
+            cards: restCards,
+            columns: current.columns.map((column) => ({
+              ...column,
+              cardIds: column.cardIds.filter((cid) => cid !== tempId),
+            })),
+          };
+        });
+        setOpError(
+          err instanceof Error ? err.message : "Failed to create card. Please try again."
+        );
+      }
+    },
+    []
+  );
+
+  const deleteCard = useCallback(
+    async (columnId: string, cardId: string) => {
+      // Snapshot the card we're about to remove so we can restore on failure.
+      let removed: { card: BoardData["cards"][string]; index: number } | null = null;
+      setBoard((current) => {
+        if (!current) return current;
+        const col = current.columns.find((c) => c.id === columnId);
+        const card = current.cards[cardId];
+        if (col && card) {
+          removed = { card, index: col.cardIds.indexOf(cardId) };
+        }
         const restCards = Object.fromEntries(
-          Object.entries(current.cards).filter(([cid]) => cid !== tempId)
+          Object.entries(current.cards).filter(([id]) => id !== cardId)
         );
         return {
           ...current,
-          cards: { ...restCards, [id]: { id, title, details: details || "" } },
-          columns: current.columns.map((column) => ({
-            ...column,
-            cardIds: column.cardIds.map((cid) => (cid === tempId ? id : cid)),
-          })),
+          cards: restCards,
+          columns: current.columns.map((column) =>
+            column.id === columnId
+              ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }
+              : column
+          ),
         };
       });
-    } catch {
-      setBoard(prev);
-      setOpError("Failed to create card. Please try again.");
-    }
-  };
 
-  const deleteCard = async (columnId: string, cardId: string) => {
-    if (!board) return;
-    const prev = board;
-
-    setBoard({
-      ...prev,
-      cards: Object.fromEntries(
-        Object.entries(prev.cards).filter(([id]) => id !== cardId)
-      ),
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }
-          : column
-      ),
-    });
-
-    try {
-      await apiDeleteCard(cardId);
-    } catch {
-      setBoard(prev);
-      setOpError("Failed to delete card. Please try again.");
-    }
-  };
+      try {
+        await apiDeleteCard(cardId);
+      } catch (err) {
+        // Restore the removed card at its original index.
+        setBoard((current) => {
+          if (!current || !removed) return current;
+          const { card, index } = removed;
+          return {
+            ...current,
+            cards: { ...current.cards, [cardId]: card },
+            columns: current.columns.map((column) => {
+              if (column.id !== columnId) return column;
+              const next = [...column.cardIds];
+              next.splice(index >= 0 ? index : next.length, 0, cardId);
+              return { ...column, cardIds: next };
+            }),
+          };
+        });
+        setOpError(
+          err instanceof Error ? err.message : "Failed to delete card. Please try again."
+        );
+      }
+    },
+    []
+  );
 
   const applyAiUpdate = useCallback(
     (updatedBoard?: BoardData) => {

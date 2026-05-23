@@ -1,19 +1,8 @@
-import json
 from unittest.mock import patch
-
-import pytest
-from httpx import ASGITransport, AsyncClient
 
 from app.ai import _parse_ai_response
 from app.database import get_board_for_user
-from app.main import app
 from tests.conftest import auth_cookie
-
-
-@pytest.fixture
-def client():
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
 
 
 # --- _parse_ai_response tests ---

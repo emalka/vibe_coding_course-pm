@@ -118,12 +118,11 @@ export function useBoard(): UseBoard {
         const { id } = await apiCreateCard(columnId, title, details);
         setBoard((current) => {
           if (!current) return current;
-          const restCards = Object.fromEntries(
-            Object.entries(current.cards).filter(([cid]) => cid !== tempId)
-          );
+          const nextCards = { ...current.cards, [id]: { id, title, details: details || "" } };
+          delete nextCards[tempId];
           return {
             ...current,
-            cards: { ...restCards, [id]: { id, title, details: details || "" } },
+            cards: nextCards,
             columns: current.columns.map((column) => ({
               ...column,
               cardIds: column.cardIds.map((cid) => (cid === tempId ? id : cid)),
@@ -134,12 +133,11 @@ export function useBoard(): UseBoard {
         // Roll back just the temp card, leaving any unrelated optimistic state alone.
         setBoard((current) => {
           if (!current) return current;
-          const restCards = Object.fromEntries(
-            Object.entries(current.cards).filter(([cid]) => cid !== tempId)
-          );
+          const nextCards = { ...current.cards };
+          delete nextCards[tempId];
           return {
             ...current,
-            cards: restCards,
+            cards: nextCards,
             columns: current.columns.map((column) => ({
               ...column,
               cardIds: column.cardIds.filter((cid) => cid !== tempId),
@@ -165,12 +163,11 @@ export function useBoard(): UseBoard {
         if (col && card) {
           removed = { card, index: col.cardIds.indexOf(cardId) };
         }
-        const restCards = Object.fromEntries(
-          Object.entries(current.cards).filter(([id]) => id !== cardId)
-        );
+        const nextCards = { ...current.cards };
+        delete nextCards[cardId];
         return {
           ...current,
-          cards: restCards,
+          cards: nextCards,
           columns: current.columns.map((column) =>
             column.id === columnId
               ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }

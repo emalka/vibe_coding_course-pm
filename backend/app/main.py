@@ -150,14 +150,8 @@ async def request_id_middleware(request: Request, call_next):
     return response
 
 
-def _get_user(session: str | None) -> str | None:
-    if not session:
-        return None
-    return get_session_user(session)
-
-
 def _require_user(session: str | None) -> str:
-    username = _get_user(session)
+    username = get_session_user(session) if session else None
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return username
@@ -196,10 +190,7 @@ async def logout(response: Response, session: str | None = Cookie(default=None))
 
 @app.get("/api/me")
 async def me(session: str | None = Cookie(default=None)):
-    username = _get_user(session)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return {"username": username}
+    return {"username": _require_user(session)}
 
 
 @app.get("/api/board")

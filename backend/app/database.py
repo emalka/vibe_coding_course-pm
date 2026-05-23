@@ -247,10 +247,10 @@ def update_card(card_id: int, username: str, title: str | None = None, details: 
         if row is None:
             return False
 
-        if title is not None:
-            conn.execute("UPDATE cards SET title = ? WHERE id = ?", (title, card_id))
-        if details is not None:
-            conn.execute("UPDATE cards SET details = ? WHERE id = ?", (details, card_id))
+        conn.execute(
+            "UPDATE cards SET title = COALESCE(?, title), details = COALESCE(?, details) WHERE id = ?",
+            (title, details, card_id),
+        )
         conn.commit()
         return True
     finally:

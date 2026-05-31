@@ -1,20 +1,41 @@
 # Kanban Studio — Agent Onboarding
 
-This md file provides the required basic information about this project.
+This md file provides the required information about this project and points to other documents as required.
 
 ## Overview
 
-Single-user Project Management MVP. Next.js frontend + Python FastAPI backend + SQLite + AI chat via OpenRouter. Shipped as one Docker container that serves the static frontend and the API.
+The Project is building a Project Management Kanban MVP. The project is built using a Python Server, a Next.js frontend, and a SQLite database. The project also includes an AI chat module based on OpenRouter.
+
+The AI module is a part of the server Python code. The server and the database are running inside a single Docker Container.
 
 **MVP scope:** hardcoded login (`user`/`password`), one Kanban board per user, drag-and-drop cards, editable column titles, AI sidebar that can create/edit/move cards. DB schema supports multi-user for the future.
 
+
+
+The main technologies are Next.js frontend + Python FastAPI backend +  database (SQLite) + AI chat via OpenRouter. Shipped as one Docker container that serves the static frontend and the API.
+
+
+
+## Architecture
+
+
+
+- **Frontend:** 
+  - Stack: Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)
+  - 
+
 ## Technology Stack
 
-- **Frontend:** Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)
-- **Backend:** FastAPI, Uvicorn, Python 3.13, `uv` package manager, Pydantic
-- **DB:** SQLite at `/data/kanban.db` (Docker volume `kanban-data`), WAL mode
+- **Frontend:** 
+  - Stack: Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)
+  - Testing: Testing Library (frontend unit/component), Playwright (E2E)
+
+- **Backend:** 
+  - Stack: FastAPI, Uvicorn, Python 3.13, `uv` package manager, Pydantic
+  - DB: SQLite at `/data/kanban.db` (Docker volume `kanban-data`), WAL mode
+  - Testing: pytest + httpx TestClient
+
 - **AI:** OpenRouter, model `openai/gpt-oss-120b`, key in root `.env` as `OPENROUTER_API_KEY`
-- **Tests:** Vitest + Testing Library (frontend unit/component), Playwright (E2E), pytest + httpx TestClient (backend)
 
 ## Commands
 
@@ -46,6 +67,18 @@ bash scripts/integration_test.sh    # test running container
 ```
 
 ## Architecture
+
+### Hight Level
+
+````
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+```
+````
 
 ### Request Flow
 ```
@@ -110,7 +143,7 @@ Single hardcoded user. Sessions in a Python dict in `main.py`. httpOnly cookie. 
 - Tests beside the file: `foo.test.ts` / `Foo.test.tsx`. E2E in `frontend/tests/`.
 - AAA pattern (Arrange, Act, Assert). Test behavior, not implementation.
 
-## Color Scheme
+## Frontend Color Scheme
 
 CSS custom properties in `frontend/src/app/globals.css`:
 - `--accent-yellow: #ecad0a` — accent lines, highlights
@@ -122,6 +155,6 @@ CSS custom properties in `frontend/src/app/globals.css`:
 
 Fonts: Space Grotesk (display) + Manrope (body) via `next/font/google`.
 
-# Project Plan
+# Project Tasks
 
-The project plan is defined in `project_docs/agents/plan.md`
+The project tasks are defined in `project_docs/agents/tasks.md`

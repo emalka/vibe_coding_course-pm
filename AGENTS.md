@@ -1,4 +1,4 @@
 # AGENTS.md
 
-This file guides AI Agent when working with this project. For more information, read the file `project_docs/agents/main.md` and follow its instructions.
+This file guides AI Agent when working with this project. For more information, read the file `docs/ai/agents/start.md` and follow its instructions.
 

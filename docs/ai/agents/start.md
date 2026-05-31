@@ -1,6 +1,6 @@
-# Kanban Studio — Agent Onboarding
+# Kanban Studio Project
 
-This md file provides the required information about this project and points to other documents as required.
+This md file provides the required information about the Kanban Studio project and points to other documents as required.
 
 ## Overview
 
@@ -8,17 +8,26 @@ The Project is building a Project Management Kanban MVP. The project is built us
 
 The AI module is a part of the server Python code. The server and the database are running inside a single Docker Container.
 
-**MVP scope:** hardcoded login (`user`/`password`), one Kanban board per user, drag-and-drop cards, editable column titles, AI sidebar that can create/edit/move cards. DB schema supports multi-user for the future.
+The project's scope includes a hardcoded login (`user`/`password`), one Kanban board per user, drag-and-drop cards, editable column titles, AI sidebar that can create/edit/move cards. DB schema supports multi-user for the future.
 
+The project's main technologies are Next.js frontend + Python FastAPI backend +  database (SQLite) + AI chat via OpenRouter. Shipped as one Docker container that serves the static frontend and the API.
 
+## General Agent Instructions
 
-The main technologies are Next.js frontend + Python FastAPI backend +  database (SQLite) + AI chat via OpenRouter. Shipped as one Docker container that serves the static frontend and the API.
+The AI Agent will use the following capabilities:
 
+* For user interaction, use Caveman
+* For adding features, use feature-dev:feature-dev.
+* For debugging, use the skill - https://www.skills.sh/obra/superpowers/systematic-debugging.
+* For Internet Access and Crawling use Firecrawl + Exa
+* For frontend design, use the Frontend Design tool
+* For code review, use `docs/ai/code/code_review/code_review_rules.md` if it exists otherwise use the Agent code review solution.
 
+If a capability isn't available or the Agent can suggest a better one, the Agent will provide proper notification.
+
+## 
 
 ## Architecture
-
-
 
 - **Frontend:** 
   - Stack: Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)

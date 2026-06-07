@@ -21,59 +21,11 @@ The AI Agent will use the following capabilities:
 * For debugging, use the skill - https://www.skills.sh/obra/superpowers/systematic-debugging.
 * For Internet Access and Crawling use Firecrawl + Exa
 * For frontend design, use the Frontend Design tool
-* For code review, use `docs/ai/code/code_review/code_review_rules.md` if it exists otherwise use the Agent code review solution.
+* For code review, use `docs/ai/code/code_review/code_review_rules.md if it exists, otherwise use the Agent code review solution.
 
-If a capability isn't available or the Agent can suggest a better one, the Agent will provide proper notification.
+If a capability isn't available or the Agent can suggest a better one, the Agent will provide proper notification to the user.
 
-## 
 
-## Architecture
-
-- **Frontend:** 
-  - Stack: Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)
-  - 
-
-## Technology Stack
-
-- **Frontend:** 
-  - Stack: Next.js 16, React 19, TypeScript (strict), Tailwind CSS 4, `@dnd-kit` (core + sortable)
-  - Testing: Testing Library (frontend unit/component), Playwright (E2E)
-
-- **Backend:** 
-  - Stack: FastAPI, Uvicorn, Python 3.13, `uv` package manager, Pydantic
-  - DB: SQLite at `/data/kanban.db` (Docker volume `kanban-data`), WAL mode
-  - Testing: pytest + httpx TestClient
-
-- **AI:** OpenRouter, model `openai/gpt-oss-120b`, key in root `.env` as `OPENROUTER_API_KEY`
-
-## Commands
-
-### Frontend (`/frontend`)
-```bash
-npm run dev              # http://localhost:3000
-npm run build            # static export to frontend/out/
-npm run lint
-npm run test             # unit tests
-npm run test:unit:watch
-npm run test:e2e         # needs dev server
-npm run test:all
-npx vitest run src/components/KanbanBoard.test.tsx   # single file
-```
-
-### Backend (`/backend`)
-```bash
-uv run uvicorn app.main:app --reload --port 8000
-uv run pytest
-uv run pytest tests/test_auth.py
-uv run pytest -k "test_login"
-```
-
-### Docker (full stack)
-```bash
-./scripts/start.sh                  # build + run at http://localhost:8000
-./scripts/stop.sh
-bash scripts/integration_test.sh    # test running container
-```
 
 ## Architecture
 
@@ -99,32 +51,11 @@ Browser → FastAPI (port 8000)
                          └── AI calls → OpenRouter
 ```
 
-### Frontend (`/frontend/src`)
-- `app/page.tsx` — root: `LoginForm` or `KanbanBoard` based on auth
-- `lib/api.ts` — all HTTP to `/api/*`; transforms API ↔ local state
-- `lib/kanban.ts` — board types + pure helpers (`moveCard`, `createId`, `findColumnId`, `isColumnId`)
-- `components/KanbanBoard.tsx` — owns board state, passes down
-- `components/ChatSidebar.tsx` — AI chat; sends history to `/api/ai/chat`, applies returned board updates
 
-Component tree: `KanbanBoard → KanbanColumn → (KanbanCard | NewCardForm)` + `KanbanCardPreview` drag overlay.
 
-Data model (normalized): `Card {id,title,details}`, `Column {id,title,cardIds[]}`, `BoardData {columns[], cards{}}`.
+- Database
 
-DnD: `DndContext` at board, `SortableContext` per column (vertical), `useDroppable` on columns, `useSortable` on cards, `PointerSensor` with 6px activation.
-
-### Backend (`/backend/app`)
-- `main.py` — all FastAPI routes, session store, static mount, lifespan DB init
-- `database.py` — all SQLite CRUD, single connection pool; seeds 1 user, 1 board, 5 columns, 8 cards
-- `ai.py` — OpenRouter client; injects board state into system prompt; parses board mutations from response
-
-### Database
 Schema: `users → boards → columns → cards`. `position` column orders columns and cards. Full schema in `project_docs/agents/DATABASE.md`.
-
-### Auth
-Single hardcoded user. Sessions in a Python dict in `main.py`. httpOnly cookie. All `/api/*` except `/api/login` return 401 if unauthenticated.
-
-### AI Integration
-`POST /api/ai/chat` with `{ message, conversation_history[] }`. Backend injects current board into system prompt, calls OpenRouter, parses operations (add/move/delete cards, rename columns), applies to SQLite, returns `{ message, board_updates_applied[] }` so the frontend can refresh.
 
 ## Coding Conventions
 
@@ -151,18 +82,6 @@ Single hardcoded user. Sessions in a Python dict in `main.py`. httpOnly cookie. 
 - Components: PascalCase (`KanbanCard.tsx`). Lib/util: camelCase (`kanban.ts`).
 - Tests beside the file: `foo.test.ts` / `Foo.test.tsx`. E2E in `frontend/tests/`.
 - AAA pattern (Arrange, Act, Assert). Test behavior, not implementation.
-
-## Frontend Color Scheme
-
-CSS custom properties in `frontend/src/app/globals.css`:
-- `--accent-yellow: #ecad0a` — accent lines, highlights
-- `--primary-blue: #209dd7` — links, key sections
-- `--secondary-purple: #753991` — submit buttons, important actions
-- `--navy-dark: #032147` — main headings
-- `--gray-text: #888888` — supporting text, labels
-- `--surface: #f7f8fb`, `--surface-strong: #fff`, plus `--stroke`, `--shadow`
-
-Fonts: Space Grotesk (display) + Manrope (body) via `next/font/google`.
 
 # Project Tasks
 

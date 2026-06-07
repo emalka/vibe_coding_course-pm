@@ -1,5 +1,3 @@
-# Database Design
-
 ## Overview
 
 SQLite database stored at `/data/kanban.db` inside the Docker container. The `/data` directory is mounted as a Docker volume (`kanban-data`) so data persists across container restarts.

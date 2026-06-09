@@ -2,6 +2,7 @@
 
 This md file provides the required information about the Kanban Studio project and points to other documents as required.
 
+
 ## Overview
 
 The Project is building a Project Management Kanban MVP. The project is built using a Python Server, a Next.js frontend, and a SQLite database. The project also includes an AI chat module based on OpenRouter.

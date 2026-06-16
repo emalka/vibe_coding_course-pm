@@ -1,5 +1,19 @@
 # Project Plan
 
+## Table of Contents
+
+- [Decisions Log](#decisions-log)
+- [Part 1: Plan](#part-1-plan)
+- [Part 2: Scaffolding](#part-2-scaffolding)
+- [Part 3: Add in Frontend](#part-3-add-in-frontend)
+- [Part 4: Fake User Sign In](#part-4-fake-user-sign-in)
+- [Part 5: Database Modeling](#part-5-database-modeling)
+- [Part 6: Backend API](#part-6-backend-api)
+- [Part 7: Frontend + Backend Integration](#part-7-frontend--backend-integration)
+- [Part 8: AI Connectivity](#part-8-ai-connectivity)
+- [Part 9: AI Kanban Integration](#part-9-ai-kanban-integration)
+- [Part 10: AI Chat Sidebar](#part-10-ai-chat-sidebar)
+
 ## Decisions Log
 
 - Auth: session cookie from FastAPI; password verified via bcrypt against SQLite (single seeded user for MVP)

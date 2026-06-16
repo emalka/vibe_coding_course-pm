@@ -6,6 +6,17 @@
 
 This review is intentionally critical. The MVP is in good shape and ships a working end-to-end Kanban + AI experience, so the goal here is to flag what would matter when this is no longer a single-user local toy. Each finding is graded for the project's actual context (single-user, local Docker, MVP), not for a generic enterprise app.
 
+## Table of Contents
+
+- [1. Executive summary](#1-executive-summary)
+- [2. Findings by severity](#2-findings-by-severity)
+  - [Critical](#critical)
+  - [High](#high)
+  - [Medium](#medium)
+  - [Low / Nits](#low--nits)
+- [3. Findings dropped after verification](#3-findings-dropped-after-verification)
+- [4. Recommended priority order](#4-recommended-priority-order)
+
 ---
 
 ## 1. Executive summary

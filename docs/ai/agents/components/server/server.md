@@ -1,3 +1,15 @@
+# Table of Contents
+
+- [Overview](#overview)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+  - [Backend Commands](#backend-commands)
+  - [Docker Commands](#docker-commands)
+- [Capabilities](#capabilities)
+  - [User Authentication](#user-authentication)
+  - [AI Integration](#ai-integration)
+  - [Coding Conventions](#coding-conventions)
+
 # Overview
 
 The server includes the backend component described in this document and the solution database described in ../database/database.md

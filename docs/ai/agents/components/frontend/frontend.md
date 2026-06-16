@@ -1,4 +1,11 @@
+## Table of Contents
 
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Data Model](#data-model)
+- [Frontend Commands](#frontend-commands)
+- [Frontend Color Scheme](#frontend-color-scheme)
+- [Coding Conventions](#coding-conventions)
 
 ## Technology Stack
 

@@ -3,6 +3,15 @@
 Scope: `backend/app/{main.py, database.py, ai.py}`.
 Severity legend: **HIGH** (correctness/security bug), **MED** (latent bug or design risk), **LOW** (polish, dead code, docs).
 
+## Table of Contents
+
+- [HIGH — Security](#high--security)
+- [HIGH — Correctness](#high--correctness)
+- [MED — Correctness / Concurrency](#med--correctness--concurrency)
+- [MED — Design](#med--design)
+- [LOW — Hygiene](#low--hygiene)
+- [Tests not covered above](#tests-not-covered-above)
+
 ---
 
 ## HIGH — Security

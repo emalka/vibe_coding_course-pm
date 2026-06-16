@@ -3,6 +3,13 @@
 Scope: `frontend/src/{app, components, lib}` (production code; test files not reviewed in depth).
 Severity legend: **HIGH** (correctness/UX bug users will hit), **MED** (latent bug or design risk), **LOW** (polish, dead code).
 
+## Table of Contents
+
+- [HIGH — Correctness](#high--correctness)
+- [MED — Correctness / UX](#med--correctness--ux)
+- [LOW — Dead code & hygiene](#low--dead-code--hygiene)
+- [Tests not covered above](#tests-not-covered-above)
+
 ---
 
 ## HIGH — Correctness

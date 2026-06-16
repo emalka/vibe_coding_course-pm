@@ -1,3 +1,15 @@
+## Table of Contents
+
+- [Overview](#overview)
+- [Schema](#schema)
+  - [users](#users)
+  - [boards](#boards)
+  - [columns](#columns)
+  - [cards](#cards)
+- [Relationships](#relationships)
+- [Default Seed Data](#default-seed-data)
+- [SQLite Configuration](#sqlite-configuration)
+
 ## Overview
 
 SQLite database stored at `/data/kanban.db` inside the Docker container. The `/data` directory is mounted as a Docker volume (`kanban-data`) so data persists across container restarts.

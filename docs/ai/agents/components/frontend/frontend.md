@@ -50,4 +50,11 @@ CSS custom properties in `frontend/src/app/globals.css`:
 
 Fonts: Space Grotesk (display) + Manrope (body) via `next/font/google`.
 
-# 
+## Coding Conventions
+
+- TypeScript strict, no `any`. `@/*` path alias → `./src/*`.
+- Functional components, arrow functions, one per file. No default exports except pages.
+- Props as inline types or `{ComponentName}Props`.
+- State via `useState`/`useReducer` in the top container; data/callbacks via props. No external state libs.
+- `clsx` for conditional classes. Tailwind utilities + CSS custom properties (`var(--navy-dark)` etc.). No CSS modules / styled-components / inline styles.
+- Business logic in `src/lib/`, not components. Keep the normalized data model. IDs via `createId(prefix)`.

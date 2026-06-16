@@ -2,7 +2,18 @@
 
 This md file provides the required information about the Kanban Studio project and points to other documents as required.
 
+## Table of Contents
 
+- [Overview](#overview)
+- [General Agent Instructions](#general-agent-instructions)
+- [Architecture](#architecture)
+  - [Hight Level](#hight-level)
+  - [Request Flow](#request-flow)
+- [Coding Conventions](#coding-conventions)
+  - [General](#general)
+  - [Files & Naming](#files--naming)
+- [Solution Components](#solution-components)
+- [Project Tasks](#project-tasks)
 
 ## Overview
 
@@ -14,7 +25,7 @@ The project's scope includes a hardcoded login (`user`/`password`), one Kanban b
 
 The project's main technologies are Next.js frontend + Python FastAPI backend +  database (SQLite) + AI chat via OpenRouter. Shipped as one Docker container that serves the static frontend and the API.
 
-## General Agent Instructions
+# General Agent Instructions
 
 The AI Agent will use the following capabilities:
 
@@ -27,19 +38,11 @@ The AI Agent will use the following capabilities:
 
 Agent can suggest a better capability for this section verticals if required add summary of General Agent Instruction when reading this document.
 
-## Architecture
+# Architecture
 
 ### Hight Level
 
-````
-```mermaid
-graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;
-```
-````
+TBD
 
 ### Request Flow
 ```
@@ -51,23 +54,27 @@ Browser → FastAPI (port 8000)
                          └── AI calls → OpenRouter
 ```
 
-- Database
+# Coding Conventions
 
-Schema: `users → boards → columns → cards`. `position` column orders columns and cards. Full schema in `project_docs/agents/DATABASE.md`.
-
-## Coding Conventions
-
-### General
+## General
 - Latest stable libraries, idiomatic patterns.
 - Keep it simple — no over-engineering, no unnecessary defensive code, no extra features.
 - Be concise. **No emojis ever** (code, UI, or docs).
 - For bugs: find root cause with evidence before fixing. Don't guess.
 
-### Files & Naming
+## Files & Naming
 - Components: PascalCase (`KanbanCard.tsx`). Lib/util: camelCase (`kanban.ts`).
 - Tests beside the file: `foo.test.ts` / `Foo.test.tsx`. E2E in `frontend/tests/`.
 - AAA pattern (Arrange, Act, Assert). Test behavior, not implementation.
 
+# Solution Components
+
+The section specifies the Kanban Studio Project solution components.
+
+* The Frontend is based on Next.js for more information refer `docs/ai/agents/components/frontend/frontend.md`
+* The server is based on Python and Docker technologies for more information refer `docs/ai/agents/components/server/server.md`
+* The database will be SQLite for more information refer `docs/ai/agents/components/database/database.md`
+
 # Project Tasks
 
-The project tasks are managed in `project_docs/agents/tasks.md`
+The project tasks are managed in `docs/ai/agents/tasks.md`

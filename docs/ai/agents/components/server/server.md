@@ -48,3 +48,9 @@ Single hardcoded user. Sessions in a Python dict in `main.py`. httpOnly cookie. 
 ## AI Integration
 
 `POST /api/ai/chat` with `{ message, conversation_history[] }`. Backend injects current board into system prompt, calls OpenRouter, parses operations (add/move/delete cards, rename columns), applies to SQLite, returns `{ message, board_updates_applied[] }` so the frontend can refresh.
+
+## Coding Conventions
+
+- Async handlers, type hints everywhere, Pydantic models for request/response.
+- Keep routes in `main.py` until complexity demands splitting.
+- Tests use a temp SQLite DB via `conftest.py` fixture `setup_test_db`.
